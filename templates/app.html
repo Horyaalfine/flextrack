@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>FlexTrack</title>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#181b24;--bg3:#1e2233;--card:#1e2233;--border:#2a2f45;--border2:#353c56;
+  --text:#e8eaf2;--muted:#7880a0;--muted2:#9099b8;
+  --accent:#4f7bff;--accent-bg:rgba(79,123,255,0.12);--accent-bd:rgba(79,123,255,0.3);
+  --green:#34c984;--green-bg:rgba(52,201,132,0.12);--green-bd:rgba(52,201,132,0.3);
+  --red:#ff5c6a;--red-bg:rgba(255,92,106,0.12);--red-bd:rgba(255,92,106,0.3);
+  --amber:#f5a623;--amber-bg:rgba(245,166,35,0.12);--amber-bd:rgba(245,166,35,0.3);
+  --r:10px;--rl:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent;}
+input,select,button{font-family:inherit;font-size:inherit;}
+button{cursor:pointer;}
+#app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+/* Auth screens */
+.auth-wrap{max-width:400px;margin:0 auto;padding:48px 24px;}
+.auth-logo{font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px;}
+.auth-logo span{color:var(--accent);}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:36px;}
+.auth-title{font-size:20px;font-weight:700;margin-bottom:20px;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:11px;font-weight:600;color:var(--muted2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.fg input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;color:var(--text);font-size:16px;}
+.fg input:focus{outline:none;border-color:var(--accent);}
+.btn{width:100%;padding:14px;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;}
+.btn-primary{background:var(--accent);color:#fff;margin-bottom:12px;}
+.btn-ghost{background:var(--bg3);border:1px solid var(--border);color:var(--muted2);}
+.btn-danger{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red);}
+.btn-amber{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);}
+.btn-green{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green);}
+.btn-sm{width:auto;padding:8px 16px;font-size:13px;border-radius:8px;}
+.auth-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:16px;}
+.auth-switch a{color:var(--accent);cursor:pointer;text-decoration:none;}
+.err-box{background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:14px;display:none;}
+.trial-badge{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;color:var(--green);display:inline-block;margin-bottom:20px;}
+
+/* Main app layout */
+.topbar{padding:14px 18px 10px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--border);}
+.topbar h1{font-size:19px;font-weight:700;letter-spacing:-.5px;}
+.topbar h1 span{color:var(--accent);}
+.tb-right{display:flex;align-items:center;gap:8px;}
+.period-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:12px;color:var(--muted2);}
+.user-btn{background:none;border:none;color:var(--muted);font-size:20px;padding:2px;}
+.content{flex:1;padding:14px 16px 100px;overflow-y:auto;}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg2);border-top:1px solid var(--border);display:flex;padding:6px 0 env(safe-area-inset-bottom);z-index:20;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0;background:none;border:none;color:var(--muted);font-size:10px;}
+.nav-btn.active{color:var(--accent);}
+.nav-btn svg{width:22px;height:22px;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* Metrics */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:14px;}
+.metric .ml{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.metric .mv{font-size:24px;font-weight:700;letter-spacing:-1px;}
+.metric .mv.g{color:var(--green);}
+.metric .mv.r{color:var(--red);}
+.metric .mv.a{color:var(--accent);}
+.metric .mv.am{color:var(--amber);}
+.metric .ms{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* Action buttons */
+.action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.action-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:16px 12px;text-align:center;cursor:pointer;}
+.action-btn .ai{font-size:26px;margin-bottom:6px;}
+.action-btn .al{font-size:13px;font-weight:600;}
+.action-btn .as{font-size:11px;color:var(--muted);margin-top:2px;}
+.action-btn.p{background:var(--accent-bg);border-color:var(--accent-bd);}
+.action-btn.p .al{color:var(--accent);}
+.action-btn.am{background:var(--amber-bg);border-color:var(--amber-bd);}
+.action-btn.am .al{color:var(--amber);}
+
+/* Section heading */
+.sh{display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;}
+.sh h2{font-size:12px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.07em;}
+.sh-a{font-size:12px;color:var(--accent);background:none;border:none;}
+
+/* Slot cards */
+.slot-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px;cursor:pointer;}
+.slot-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.st{font-size:15px;font-weight:600;}
+.sd{font-size:12px;color:var(--muted);margin-top:1px;}
+.sr{text-align:right;}
+.sg{font-size:16px;font-weight:700;}
+.sn{font-size:12px;margin-top:2px;}
+.sn.pos{color:var(--green);}
+.sn.neg{color:var(--red);}
+.pills{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.pill{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted2);}
+.pill.g{background:var(--green-bg);border-color:var(--green-bd);color:var(--green);}
+.pill.am{background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber);}
+
+/* List items (expenses/returns) */
+.list-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.li-t{font-size:14px;font-weight:500;}
+.li-s{font-size:12px;color:var(--muted);margin-top:2px;}
+.li-a{font-size:15px;font-weight:600;color:var(--red);}
+
+/* P&L */
+.pl-group{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:12px;}
+.pl-row{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);font-size:14px;}
+.pl-row:last-child{border-bottom:none;}
+.pl-row.tot{font-weight:700;background:var(--bg3);}
+.pl-row .pos{color:var(--green);font-weight:600;}
+.pl-row .neg{color:var(--red);font-weight:600;}
+.pl-row .sl{color:var(--muted);font-size:13px;}
+.banner{border-radius:var(--rl);padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.banner.g{background:linear-gradient(135deg,rgba(52,201,132,.15),rgba(52,201,132,.05));border:1px solid var(--green-bd);}
+.banner.r{background:linear-gradient(135deg,rgba(255,92,106,.15),rgba(255,92,106,.05));border:1px solid var(--red-bd);}
+.banner .bl{font-size:12px;color:var(--muted2);}
+.banner .bv{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--green);}
+.banner.r .bv{color:var(--red);}
+
+/* Tax */
+.tax-block{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:14px;}
+.tax-block h3{font-size:12px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+.tax-row{display:flex;justify-content:space-between;font-size:14px;padding:8px 0;border-bottom:1px solid var(--border);}
+.tax-row:last-child{border-bottom:none;}
+.tax-row .tl{color:var(--muted);}
+.tier-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted);}
+.tier-row span:last-child{color:var(--text);font-weight:500;}
+.info-box{background:var(--accent-bg);border:1px solid var(--accent-bd);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--muted2);line-height:1.6;margin-bottom:14px;}
+.info-box strong{color:var(--text);}
+.warn-box{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--amber);line-height:1.6;margin-bottom:14px;}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:var(--bg2);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:22px 18px env(safe-area-inset-bottom);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.modal-hdr h2{font-size:18px;font-weight:700;}
+.modal-close{background:var(--bg3);border:none;width:30px;height:30px;border-radius:50%;color:var(--muted2);font-size:16px;}
+.fg-m{margin-bottom:14px;}
+.fg-m label{display:block;font-size:11px;font-weight:600;color:var(--muted2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.fg-m input,.fg-m select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;color:var(--text);font-size:16px;-webkit-appearance:none;}
+.fg-m input:focus,.fg-m select:focus{outline:none;border-color:var(--accent);}
+.fg-m input.big{font-size:28px;font-weight:700;text-align:center;padding:14px;letter-spacing:-1px;}
+.fg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.hint{font-size:11px;color:var(--muted);margin-top:4px;}
+.step-dots{display:flex;gap:6px;margin-bottom:18px;}
+.step-dot{flex:1;height:4px;border-radius:2px;background:var(--border);}
+.step-dot.done{background:var(--green);}
+.step-dot.active{background:var(--accent);}
+.prev-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;margin-bottom:16px;font-size:13px;}
+.prev-row{display:flex;justify-content:space-between;padding:3px 0;}
+.prev-row .pl{color:var(--muted);}
+.prev-div{height:1px;background:var(--border);margin:8px 0;}
+.prev-tot{display:flex;justify-content:space-between;font-weight:700;font-size:14px;}
+
+/* Month chips */
+.month-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;}
+.month-row::-webkit-scrollbar{display:none;}
+.month-chip{flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted2);cursor:pointer;white-space:nowrap;}
+.month-chip.active{background:var(--accent-bg);border-color:var(--accent-bd);color:var(--accent);font-weight:600;}
+
+/* Worth-it */
+.worthit{border-radius:var(--rl);padding:13px 15px;margin-bottom:12px;}
+.worthit h4{font-size:13px;font-weight:700;margin-bottom:3px;}
+.worthit p{font-size:12px;line-height:1.5;}
+.worthit.good{background:var(--green-bg);border:1px solid var(--green-bd);}
+.worthit.good h4{color:var(--green);}
+.worthit.bad{background:var(--red-bg);border:1px solid var(--red-bd);}
+.worthit.bad h4{color:var(--red);}
+.worthit.ok{background:var(--amber-bg);border:1px solid var(--amber-bd);}
+.worthit.ok h4{color:var(--amber);}
+
+/* Returns */
+.ret-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px;cursor:pointer;}
+.ret-status{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;margin-bottom:8px;}
+.ret-status.pending{background:var(--amber-bg);color:var(--amber);}
+.ret-status.returned{background:var(--green-bg);color:var(--green);}
+.ret-status.overdue{background:var(--red-bg);color:var(--red);}
+
+/* Report mode */
+.report-toggle{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:3px;margin-bottom:16px;}
+.rt-btn{flex:1;padding:8px;border:none;border-radius:7px;font-size:13px;font-weight:500;color:var(--muted2);background:transparent;}
+.rt-btn.active{background:var(--card);color:var(--text);font-weight:600;border:1px solid var(--border);}
+.date-range{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;margin-bottom:14px;}
+.date-range label{font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:8px;}
+.dr-row{display:flex;gap:8px;align-items:center;}
+.dr-row input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:14px;}
+.dr-row span{color:var(--muted);font-size:13px;}
+
+/* Export */
+.export-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.export-btn{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;}
+.export-btn .ei{font-size:22px;margin-bottom:4px;}
+.export-btn .el{font-size:12px;color:var(--muted2);font-weight:500;}
+
+/* Empty */
+.empty{text-align:center;padding:50px 20px;}
+.empty .ee{font-size:44px;margin-bottom:12px;}
+.empty h3{font-size:17px;font-weight:600;margin-bottom:8px;}
+.empty p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:18px;}
+
+/* Spinner */
+.spinner{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:13px;}
+
+/* Trial banner */
+.trial-bar{background:var(--amber-bg);border-bottom:1px solid var(--amber-bd);padding:8px 18px;font-size:12px;color:var(--amber);text-align:center;}
+
+@media(prefers-color-scheme:light){
+  :root{--bg:#f2f4f8;--bg2:#fff;--bg3:#eaecf2;--card:#fff;--border:#dde0ea;--text:#111827;--muted:#8b92a8;--muted2:#5c6480;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- AUTH SCREENS -->
+  <div id="screen-auth">
+    <!-- Login -->
+    <div id="auth-login" class="auth-wrap">
+      <div class="auth-logo">Flex<span>Track</span></div>
+      <div class="auth-sub">Amazon Flex earnings tracker</div>
+      <div class="trial-badge">✓ First month free</div>
+      <div class="auth-title">Sign in</div>
+      <div class="err-box" id="login-err"></div>
+      <div class="fg"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" inputmode="email"/></div>
+      <div class="fg"><label>Password</label><input type="password" id="login-pw" placeholder="Your password"/></div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+      <button class="btn btn-ghost" onclick="showRegister()">Create free account</button>
+      <div class="auth-switch">Don't have an account? <a onclick="showRegister()">Register free</a></div>
+    </div>
+    <!-- Register -->
+    <div id="auth-register" class="auth-wrap" style="display:none">
+      <div class="auth-logo">Flex<span>Track</span></div>
+      <div class="auth-sub">Amazon Flex earnings tracker</div>
+      <div class="trial-badge">✓ First month free — no card needed</div>
+      <div class="auth-title">Create account</div>
+      <div class="err-box" id="reg-err"></div>
+      <div class="fg"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com" inputmode="email"/></div>
+      <div class="fg"><label>Password <span style="font-weight:400;text-transform:none;letter-spacing:0">(min 8 chars)</span></label><input type="password" id="reg-pw" placeholder="Choose a password"/></div>
+      <div class="fg"><label>Confirm password</label><input type="password" id="reg-pw2" placeholder="Repeat password"/></div>
+      <button class="btn btn-primary" onclick="doRegister()">Create free account</button>
+      <button class="btn btn-ghost" onclick="showLogin()">Already have an account</button>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="screen-app" style="display:none">
+    <div id="trial-bar" class="trial-bar" style="display:none"></div>
+    <div class="topbar">
+      <div>
+        <h1>Flex<span>Track</span></h1>
+      </div>
+      <div class="tb-right">
+        <button class="period-btn" id="period-btn">Jun 2026</button>
+        <button class="user-btn" onclick="showUserMenu()" title="Account">⚙</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="tab-content active" id="tab-dashboard"><div id="dash-content"><div class="spinner">Loading…</div></div></div>
+      <div class="tab-content" id="tab-slots">
+        <div id="slots-month-row" class="month-row"></div>
+        <div id="slots-content"></div>
+      </div>
+      <div class="tab-content" id="tab-expenses">
+        <div id="exp-month-row" class="month-row"></div>
+        <div id="exp-content"></div>
+      </div>
+      <div class="tab-content" id="tab-returns"><div id="returns-content"></div></div>
+      <div class="tab-content" id="tab-tax">
+        <div id="tax-year-row" class="month-row"></div>
+        <div id="tax-content"></div>
+      </div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Home
+      </button>
+      <button class="nav-btn" id="nav-slots" onclick="switchTab('slots')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2m4 0h2M8 18h2"/></svg>
+        Slots
+      </button>
+      <button class="nav-btn" id="nav-expenses" onclick="switchTab('expenses')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="12" r="1" fill="currentColor"/><circle cx="6" cy="18" r="1" fill="currentColor"/></svg>
+        Expenses
+      </button>
+      <button class="nav-btn" id="nav-returns" onclick="switchTab('returns')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l-4 4 4 4"/><path d="M5 16h8a6 6 0 000-12H4"/></svg>
+        Returns
+      </button>
+      <button class="nav-btn" id="nav-tax" onclick="switchTab('tax')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg>
+        Tax/UC
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- SLOT MODAL -->
+<div class="modal-bg" id="slot-modal" style="display:none" onclick="closeBg(event,'slot-modal')">
+<div class="modal">
+  <div class="modal-hdr"><h2 id="slot-modal-title">Log slot</h2><button class="modal-close" onclick="closeModal('slot-modal')">✕</button></div>
+  <div class="step-dots"><div class="step-dot active" id="sdot1"></div><div class="step-dot" id="sdot2"></div></div>
+  <div id="slot-s1">
+    <div class="fg-m"><label>Date</label><input type="date" id="s-date"/></div>
+    <div class="fg-grid">
+      <div class="fg-m"><label>Slot start</label><input type="time" id="s-start"/></div>
+      <div class="fg-m"><label>Slot end (allocated)</label><input type="time" id="s-end"/></div>
+    </div>
+    <div class="fg-m"><label>Actual finish <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(if different — for H&R calc)</span></label><input type="time" id="s-aend"/><div class="hint">Leave blank if finished on time.</div></div>
+    <div class="fg-grid">
+      <div class="fg-m"><label>Gross pay (£)</label><input type="number" id="s-gross" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
+      <div class="fg-m"><label>Time comp (£)</label><input type="number" id="s-tc" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
+    </div>
+    <div class="fg-grid">
+      <div class="fg-m"><label>Tips (£)</label><input type="number" id="s-tips" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
+      <div class="fg-m"><label>Packages</label><input type="number" id="s-pkgs" min="0" step="1" placeholder="optional" inputmode="numeric"/></div>
+    </div>
+    <button class="btn btn-primary" onclick="slotNext()">Next: Mileage →</button>
+  </div>
+  <div id="slot-s2" style="display:none">
+    <div class="info-box">Enter odometer readings — miles are calculated automatically.</div>
+    <div class="fg-m"><label>Odometer at start (miles)</label><input type="number" id="s-os" class="big" min="0" step="1" placeholder="e.g. 24580" inputmode="numeric"/></div>
+    <div class="fg-m"><label>Odometer at end (miles)</label><input type="number" id="s-oe" class="big" min="0" step="1" placeholder="e.g. 24618" inputmode="numeric"/></div>
+    <div class="prev-box" id="odo-prev" style="display:none">
+      <div class="prev-row"><span class="pl">Miles driven</span><span id="pv-miles">—</span></div>
+      <div class="prev-row"><span class="pl">Mileage allowance</span><span id="pv-mallow" style="color:var(--red)">—</span></div>
+    </div>
+    <div class="fg-m"><label>Parking / tolls / other (£)</label><input type="number" id="s-other" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
+    <div class="fg-m"><label>Notes</label><input type="text" id="s-notes" placeholder="e.g. Fulham depot"/></div>
+    <div class="prev-box" id="slot-prev" style="display:none">
+      <div class="prev-row"><span class="pl">Total income</span><span id="pv-inc">—</span></div>
+      <div class="prev-row"><span class="pl">Mileage (45p or 55p/mi)</span><span id="pv-mil" style="color:var(--red)">—</span></div>
+      <div class="prev-row"><span class="pl" id="pv-hr-lbl">H&R insurance</span><span id="pv-hr" style="color:var(--red)">—</span></div>
+      <div class="prev-row"><span class="pl">Other expenses</span><span id="pv-oth" style="color:var(--red)">—</span></div>
+      <div class="prev-div"></div>
+      <div class="prev-tot"><span>Net profit</span><span id="pv-net">—</span></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost btn-sm" onclick="slotStep(1)">← Back</button>
+      <button class="btn btn-primary" style="flex:1" id="slot-save-btn" onclick="saveSlot()">Save slot</button>
+      <button class="btn btn-danger btn-sm" id="slot-del-btn" style="display:none" onclick="deleteSlot()">Delete</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="modal-bg" id="exp-modal" style="display:none" onclick="closeBg(event,'exp-modal')">
+<div class="modal">
+  <div class="modal-hdr"><h2 id="exp-modal-title">Log expense</h2><button class="modal-close" onclick="closeModal('exp-modal')">✕</button></div>
+  <div class="fg-m"><label>Date</label><input type="date" id="e-date"/></div>
+  <div class="fg-m"><label>Category</label>
+    <select id="e-cat">
+      <option value="fuel">⛽ Fuel</option>
+      <option value="parking">🅿️ Parking / Toll</option>
+      <option value="phone">📱 Phone</option>
+      <option value="other">📦 Other</option>
+    </select>
+  </div>
+  <div class="fg-m"><label>Amount (£)</label><input type="number" id="e-amount" class="big" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
+  <div class="fg-m"><label>Notes</label><input type="text" id="e-notes" placeholder="e.g. Shell Harlesden, 30L"/></div>
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-primary" style="flex:1" onclick="saveExpense()">Save expense</button>
+    <button class="btn btn-danger btn-sm" id="exp-del-btn" style="display:none" onclick="deleteExpense()">Delete</button>
+  </div>
+</div>
+</div>
+
+<!-- RETURN MODAL -->
+<div class="modal-bg" id="ret-modal" style="display:none" onclick="closeBg(event,'ret-modal')">
+<div class="modal">
+  <div class="modal-hdr"><h2 id="ret-modal-title">Undelivered packages</h2><button class="modal-close" onclick="closeModal('ret-modal')">✕</button></div>
+  <div id="ret-log-step" style="display:none">
+    <div class="warn-box">⚠️ Packages must be returned to the station by <strong>10:00am</strong> next day.</div>
+    <div class="fg-m"><label>Date found</label><input type="date" id="r-date"/></div>
+    <div class="fg-grid">
+      <div class="fg-m"><label>No. of packages</label><input type="number" id="r-pkgs" class="big" min="1" step="1" placeholder="0" inputmode="numeric"/></div>
+      <div class="fg-m"><label>Return deadline</label><input type="text" id="r-deadline" readonly style="background:var(--bg3);color:var(--amber);font-weight:600;text-align:center;border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;width:100%;font-size:13px;"/></div>
+    </div>
+    <div class="fg-m"><label>Notes</label><input type="text" id="r-notes" placeholder="e.g. 3 large parcels, wrong address"/></div>
+    <button class="btn btn-amber" onclick="saveReturn()">Log undelivered packages</button>
+  </div>
+  <div id="ret-trip-step" style="display:none">
+    <div class="info-box">Log the return trip. <strong>No H&R insurance</strong> — 45p/mile mileage only.</div>
+    <div class="fg-grid">
+      <div class="fg-m"><label>Return date</label><input type="date" id="r-ret-date"/></div>
+      <div class="fg-m"><label>Return time</label><input type="time" id="r-ret-time"/></div>
+    </div>
+    <div class="fg-m"><label>Odometer at start of return</label><input type="number" id="r-os" class="big" min="0" step="1" placeholder="e.g. 24800" inputmode="numeric"/></div>
+    <div class="fg-m"><label>Odometer at end of return</label><input type="number" id="r-oe" class="big" min="0" step="1" placeholder="e.g. 24820" inputmode="numeric"/></div>
+    <div class="prev-box" id="ret-odo-prev" style="display:none">
+      <div class="prev-row"><span class="pl">Return miles</span><span id="rv-miles">—</span></div>
+      <div class="prev-row"><span class="pl">Mileage cost (45p/mi)</span><span id="rv-cost" style="color:var(--red)">—</span></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveReturnTrip()">Mark as returned</button>
+      <button class="btn btn-danger btn-sm" id="ret-del-btn" onclick="deleteReturn()">Delete</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const HR_RATE = 1.49;
+function hmrcRate(ty) { return ty >= 2026 ? 0.55 : 0.45; }
+function calcHmrcMil(miles, ty) {
+  const r = hmrcRate(ty);
+  return miles <= 10000 ? +(miles * r).toFixed(2) : +((10000 * r) + ((miles - 10000) * 0.25)).toFixed(2);
+}
+function calcUcMil(miles) {
+  return miles <= 833 ? +(miles * 0.45).toFixed(2) : +((833 * 0.45) + ((miles - 833) * 0.25)).toFixed(2);
+}
+function slotTY(date) {
+  if (!date) return 2025;
+  const d = new Date(date + 'T00:00:00');
+  return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+}
+function timeDiff(a, b) {
+  if (!a || !b) return 0;
+  const [ah,am] = a.split(':').map(Number);
+  const [bh,bm] = b.split(':').map(Number);
+  const m = (bh*60+bm)-(ah*60+am);
+  return m > 0 ? +(m/60).toFixed(4) : 0;
+}
+function calcSlot(s) {
+  const gross = +s.gross||0, tips = +s.tips||0, tc = +s.timecomp||0, other = +s.other_expenses||0;
+  const os = +s.odo_start||0, oe = +s.odo_end||0;
+  const miles = oe > os ? oe - os : 0;
+  const income = gross + tips + tc;
+  const ty = slotTY(s.date);
+  const milAllow = calcHmrcMil(miles, ty);
+  const slotH = timeDiff(s.start_time, s.end_time);
+  const actH = timeDiff(s.start_time, s.actual_end || s.end_time);
+  const hrIns = +(actH * HR_RATE).toFixed(2);
+  const net = +(income - milAllow - hrIns - other).toFixed(2);
+  const hourly = slotH > 0 ? +(net / slotH).toFixed(2) : 0;
+  return { gross, tips, tc, other, miles, income, milAllow, slotH, actH, hrIns, net, hourly, ty,
+           earlyFinish: s.actual_end && s.actual_end < s.end_time,
+           lateFinish:  s.actual_end && s.actual_end > s.end_time };
+}
+function calcReturn(r) {
+  const os = +r.ret_odo_start||0, oe = +r.ret_odo_end||0;
+  const miles = oe > os ? oe - os : 0;
+  return { miles, cost: +(miles * 0.45).toFixed(2) };
+}
+
+// ── Format helpers ────────────────────────────────────────────────────────────
+function fmtGBP(n) { return (n<0?'−':'')+'£'+Math.abs(n).toFixed(2); }
+function fmtMi(n)  { return (+n||0).toFixed(0)+' mi'; }
+function dayLbl(d) {
+  const dt = new Date(d+'T00:00:00');
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]+' '+dt.getDate()+' '+
+    ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()];
+}
+function monLbl(m) {
+  const [y,mo]=m.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1]+' '+y;
+}
+function tyLbl(y) { return y+'–'+String(y+1).slice(2); }
+function slotMon(s) { return s.date?s.date.slice(0,7):''; }
+
+// ── State & Data ──────────────────────────────────────────────────────────────
+let token = localStorage.getItem('ft_token') || '';
+let userEmail = localStorage.getItem('ft_email') || '';
+let slots=[], expenses=[], returns_=[];
+let curMon='', curTY=2026, taxMode='hmrc', ucMon='';
+let editSlotId=null, editExpId=null, editRetId=null;
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Request failed');
+  return j;
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function showLogin()    { document.getElementById('auth-login').style.display=''; document.getElementById('auth-register').style.display='none'; }
+function showRegister() { document.getElementById('auth-login').style.display='none'; document.getElementById('auth-register').style.display=''; }
+
+async function doLogin() {
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  try {
+    const r = await api('POST','/api/login',{email,password:pw});
+    token=r.token; userEmail=r.email;
+    localStorage.setItem('ft_token',token); localStorage.setItem('ft_email',userEmail);
+    showTrialInfo(r);
+    await loadAll();
+  } catch(e) { err.textContent=e.message; err.style.display='block'; }
+}
+
+async function doRegister() {
+  const email=document.getElementById('reg-email').value.trim();
+  const pw=document.getElementById('reg-pw').value;
+  const pw2=document.getElementById('reg-pw2').value;
+  const err=document.getElementById('reg-err');
+  err.style.display='none';
+  if (pw !== pw2) { err.textContent='Passwords do not match'; err.style.display='block'; return; }
+  try {
+    const r = await api('POST','/api/register',{email,password:pw});
+    token=r.token; userEmail=r.email;
+    localStorage.setItem('ft_token',token); localStorage.setItem('ft_email',userEmail);
+    showTrialInfo(r);
+    await loadAll();
+  } catch(e) { err.textContent=e.message; err.style.display='block'; }
+}
+
+function showTrialInfo(r) {
+  const bar = document.getElementById('trial-bar');
+  if (r.status==='trial' && r.trial_days_left > 0) {
+    bar.textContent = '🎉 Free trial — '+r.trial_days_left+' day'+(r.trial_days_left!==1?'s':'')+' remaining';
+    bar.style.display='block';
+  }
+}
+
+function showUserMenu() {
+  if (confirm('Signed in as '+userEmail+'\n\nSign out?')) {
+    token=''; userEmail='';
+    localStorage.removeItem('ft_token'); localStorage.removeItem('ft_email');
+    location.reload();
+  }
+}
+
+// ── Load all data ─────────────────────────────────────────────────────────────
+async function loadAll() {
+  document.getElementById('screen-auth').style.display='none';
+  document.getElementById('screen-app').style.display='';
+  document.getElementById('dash-content').innerHTML='<div class="spinner">Loading…</div>';
+  try {
+    [slots, expenses, returns_] = await Promise.all([
+      api('GET','/api/slots'),
+      api('GET','/api/expenses'),
+      api('GET','/api/returns')
+    ]);
+    // normalise keys from DB
+    slots    = slots.map(s=>({...s, start:s.start_time, end:s.end_time, actual_end:s.actual_end, other:s.other_expenses, pkgs:s.packages}));
+    initState();
+    render();
+  } catch(e) {
+    if (e.message.includes('Token')) { localStorage.removeItem('ft_token'); location.reload(); }
+    document.getElementById('dash-content').innerHTML='<div class="spinner">Error loading data: '+e.message+'</div>';
+  }
+}
+
+function initState() {
+  const n=new Date();
+  curMon=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+  curTY = n.getMonth()>=3 ? n.getFullYear() : n.getFullYear()-1;
+}
+
+function getMonths() {
+  const ms=new Set([...slots.map(s=>slotMon(s)),...expenses.map(e=>e.date?.slice(0,7)||'')].filter(Boolean));
+  const n=new Date(); ms.add(n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'));
+  return [...ms].sort().reverse();
+}
+function getTYs() {
+  const ys=new Set(); slots.forEach(s=>{if(s.date){const d=new Date(s.date+'T00:00:00');ys.add(d.getMonth()>=3?d.getFullYear():d.getFullYear()-1);}});
+  const n=new Date(); ys.add(n.getMonth()>=3?n.getFullYear():n.getFullYear()-1);
+  return [...ys].sort().reverse();
+}
+
+// ── Nav ───────────────────────────────────────────────────────────────────────
+let activeTab='dashboard';
+function switchTab(t) {
+  document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('nav-'+t).classList.add('active');
+  activeTab=t; render();
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).style.display='flex'; }
+function closeModal(id) { document.getElementById(id).style.display='none'; }
+function closeBg(e,id)  { if(e.target.id===id) closeModal(id); }
+
+// ── Slot modal ────────────────────────────────────────────────────────────────
+function openSlotModal(id) {
+  editSlotId=id||null;
+  const s=id?slots.find(x=>x.id===id):null;
+  document.getElementById('slot-modal-title').textContent=id?'Edit slot':'Log slot';
+  document.getElementById('slot-del-btn').style.display=id?'inline-flex':'none';
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('s-date').value   = s?.date||today;
+  document.getElementById('s-start').value  = s?.start_time||'09:00';
+  document.getElementById('s-end').value    = s?.end_time||'13:00';
+  document.getElementById('s-aend').value   = s?.actual_end||'';
+  document.getElementById('s-gross').value  = s?.gross||'';
+  document.getElementById('s-tc').value     = s?.timecomp||'';
+  document.getElementById('s-tips').value   = s?.tips||'';
+  document.getElementById('s-pkgs').value   = s?.packages||'';
+  document.getElementById('s-os').value     = s?.odo_start||'';
+  document.getElementById('s-oe').value     = s?.odo_end||'';
+  document.getElementById('s-other').value  = s?.other_expenses||'';
+  document.getElementById('s-notes').value  = s?.notes||'';
+  slotStep(1); openModal('slot-modal'); updateOdoPrev(); updateSlotPrev();
+}
+
+function slotNext() {
+  if (!document.getElementById('s-date').value||!document.getElementById('s-gross').value) { alert('Date and gross pay required.'); return; }
+  slotStep(2);
+}
+function slotStep(n) {
+  document.getElementById('slot-s1').style.display=n===1?'block':'none';
+  document.getElementById('slot-s2').style.display=n===2?'block':'none';
+  ['sdot1','sdot2'].forEach((id,i)=>{document.getElementById(id).className='step-dot'+(i+1<n?' done':i+1===n?' active':'');});
+}
+
+function updateOdoPrev() {
+  const os=+document.getElementById('s-os').value||0, oe=+document.getElementById('s-oe').value||0;
+  const prev=document.getElementById('odo-prev');
+  if(os>0&&oe>os){const mi=oe-os,ty=slotTY(document.getElementById('s-date').value);document.getElementById('pv-miles').textContent=fmtMi(mi);document.getElementById('pv-mallow').textContent='−'+fmtGBP(calcHmrcMil(mi,ty));prev.style.display='block';}
+  else prev.style.display='none';
+  updateSlotPrev();
+}
+
+function updateSlotPrev() {
+  const gross=+document.getElementById('s-gross').value||0,tips=+document.getElementById('s-tips').value||0,tc=+document.getElementById('s-tc').value||0,other=+document.getElementById('s-other').value||0;
+  const os=+document.getElementById('s-os').value||0,oe=+document.getElementById('s-oe').value||0,miles=oe>os?oe-os:0;
+  const start=document.getElementById('s-start').value,end=document.getElementById('s-end').value,aend=document.getElementById('s-aend').value;
+  const prev=document.getElementById('slot-prev');
+  if(gross>0){
+    const income=gross+tips+tc,ty=slotTY(document.getElementById('s-date').value);
+    const milA=calcHmrcMil(miles,ty),actH=timeDiff(start,aend||end),hrI=actH*HR_RATE,net=income-milA-hrI-other;
+    document.getElementById('pv-inc').textContent=fmtGBP(income);
+    document.getElementById('pv-mil').textContent=miles>0?'−'+fmtGBP(milA):'—';
+    document.getElementById('pv-hr-lbl').textContent=actH>0?'H&R ('+actH.toFixed(2)+'h × £1.49)':'H&R insurance';
+    document.getElementById('pv-hr').textContent=actH>0?'−'+fmtGBP(hrI):'—';
+    document.getElementById('pv-oth').textContent=other>0?'−'+fmtGBP(other):'—';
+    const netEl=document.getElementById('pv-net');netEl.textContent=fmtGBP(net);netEl.style.color=net>=0?'var(--green)':'var(--red)';
+    prev.style.display='block';
+  } else prev.style.display='none';
+}
+
+['s-gross','s-tips','s-tc','s-other','s-start','s-end','s-aend','s-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateSlotPrev);});
+['s-os','s-oe'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateOdoPrev);});
+
+async function saveSlot() {
+  const date=document.getElementById('s-date').value,gross=document.getElementById('s-gross').value;
+  if(!date||!gross){alert('Date and gross pay required.');return;}
+  const btn=document.getElementById('slot-save-btn'); btn.textContent='Saving…'; btn.disabled=true;
+  const body={date,start:document.getElementById('s-start').value,end:document.getElementById('s-end').value,actual_end:document.getElementById('s-aend').value,gross:+gross||0,tips:+document.getElementById('s-tips').value||0,timecomp:+document.getElementById('s-tc').value||0,pkgs:+document.getElementById('s-pkgs').value||0,odo_start:+document.getElementById('s-os').value||0,odo_end:+document.getElementById('s-oe').value||0,other:+document.getElementById('s-other').value||0,notes:document.getElementById('s-notes').value.trim()};
+  try {
+    if(editSlotId){await api('PUT','/api/slots/'+editSlotId,body);const i=slots.findIndex(x=>x.id===editSlotId);if(i>=0)slots[i]={...slots[i],...body,start_time:body.start,end_time:body.end,other_expenses:body.other,packages:body.pkgs};}
+    else{const r=await api('POST','/api/slots',body);slots.unshift({...r,start_time:r.start_time,end_time:r.end_time});}
+    curMon=date.slice(0,7);closeModal('slot-modal');render();
+  } catch(e){alert('Error: '+e.message);}
+  btn.textContent='Save slot'; btn.disabled=false;
+}
+
+async function deleteSlot() {
+  if(!editSlotId||!confirm('Delete this slot?'))return;
+  await api('DELETE','/api/slots/'+editSlotId);
+  slots=slots.filter(x=>x.id!==editSlotId);closeModal('slot-modal');render();
+}
+
+// ── Expense modal ─────────────────────────────────────────────────────────────
+function openExpModal(id) {
+  editExpId=id||null;const e=id?expenses.find(x=>x.id===id):null;
+  document.getElementById('exp-modal-title').textContent=id?'Edit expense':'Log expense';
+  document.getElementById('exp-del-btn').style.display=id?'inline-flex':'none';
+  document.getElementById('e-date').value  =e?.date||new Date().toISOString().slice(0,10);
+  document.getElementById('e-cat').value   =e?.category||'fuel';
+  document.getElementById('e-amount').value=e?.amount||'';
+  document.getElementById('e-notes').value =e?.notes||'';
+  openModal('exp-modal');
+}
+async function saveExpense() {
+  const date=document.getElementById('e-date').value,amount=document.getElementById('e-amount').value;
+  if(!date||!amount){alert('Date and amount required.');return;}
+  const body={date,category:document.getElementById('e-cat').value,amount:+amount,notes:document.getElementById('e-notes').value.trim()};
+  if(editExpId){await api('PUT','/api/expenses/'+editExpId,body);const i=expenses.findIndex(x=>x.id===editExpId);if(i>=0)expenses[i]={...expenses[i],...body};}
+  else{const r=await api('POST','/api/expenses',body);expenses.unshift(r);}
+  closeModal('exp-modal');render();
+}
+async function deleteExpense() {
+  if(!editExpId||!confirm('Delete this expense?'))return;
+  await api('DELETE','/api/expenses/'+editExpId);
+  expenses=expenses.filter(x=>x.id!==editExpId);closeModal('exp-modal');render();
+}
+
+// ── Return modal ──────────────────────────────────────────────────────────────
+function openRetModal(id,mode) {
+  editRetId=id||null;const r=id?returns_.find(x=>x.id===id):null;
+  document.getElementById('ret-log-step').style.display='none';
+  document.getElementById('ret-trip-step').style.display='none';
+  if(!id||mode==='log'){
+    document.getElementById('ret-modal-title').textContent=id?'Undelivered packages':'Log undelivered packages';
+    const today=new Date().toISOString().slice(0,10);
+    document.getElementById('r-date').value=r?.date||today;
+    document.getElementById('r-pkgs').value=r?.packages||'';
+    document.getElementById('r-notes').value=r?.notes||'';
+    setRetDeadline(r?.date||today);
+    document.getElementById('ret-log-step').style.display='block';
+  } else {
+    document.getElementById('ret-modal-title').textContent='Log return trip';
+    document.getElementById('ret-del-btn').style.display=id?'inline-flex':'none';
+    const now=new Date();
+    document.getElementById('r-ret-date').value=r?.ret_date||now.toISOString().slice(0,10);
+    document.getElementById('r-ret-time').value=r?.ret_time||now.toTimeString().slice(0,5);
+    document.getElementById('r-os').value=r?.ret_odo_start||'';
+    document.getElementById('r-oe').value=r?.ret_odo_end||'';
+    document.getElementById('ret-trip-step').style.display='block';
+    updateRetOdoPrev();
+  }
+  openModal('ret-modal');
+}
+function setRetDeadline(date) {
+  if(!date)return;const d=new Date(date+'T00:00:00');d.setDate(d.getDate()+1);
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('r-deadline').value=days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+' 10:00am';
+}
+document.getElementById('r-date')?.addEventListener('input',e=>setRetDeadline(e.target.value));
+function updateRetOdoPrev(){const os=+document.getElementById('r-os').value||0,oe=+document.getElementById('r-oe').value||0,prev=document.getElementById('ret-odo-prev');if(os>0&&oe>os){document.getElementById('rv-miles').textContent=fmtMi(oe-os);document.getElementById('rv-cost').textContent='−'+fmtGBP((oe-os)*0.45);prev.style.display='block';}else prev.style.display='none';}
+['r-os','r-oe'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateRetOdoPrev);});
+async function saveReturn(){
+  const date=document.getElementById('r-date').value,pkgs=document.getElementById('r-pkgs').value;
+  if(!date||!pkgs){alert('Date and package count required.');return;}
+  const body={date,packages:+pkgs,notes:document.getElementById('r-notes').value.trim(),deadline:document.getElementById('r-deadline').value};
+  if(editRetId){await api('PUT','/api/returns/'+editRetId,{...body,status:'pending'});const i=returns_.findIndex(x=>x.id===editRetId);if(i>=0)returns_[i]={...returns_[i],...body};}
+  else{const r=await api('POST','/api/returns',body);returns_.unshift(r);}
+  closeModal('ret-modal');render();
+}
+async function saveReturnTrip(){
+  if(!editRetId)return;
+  const os=+document.getElementById('r-os').value||0,oe=+document.getElementById('r-oe').value||0;
+  if(!os||!oe||oe<=os){alert('Please enter valid odometer readings.');return;}
+  const body={...returns_.find(x=>x.id===editRetId),ret_date:document.getElementById('r-ret-date').value,ret_time:document.getElementById('r-ret-time').value,ret_odo_start:os,ret_odo_end:oe,status:'returned',packages:returns_.find(x=>x.id===editRetId).packages};
+  await api('PUT','/api/returns/'+editRetId,body);
+  const i=returns_.findIndex(x=>x.id===editRetId);if(i>=0)returns_[i]={...returns_[i],...body};
+  closeModal('ret-modal');render();
+}
+async function deleteReturn(){
+  if(!editRetId||!confirm('Delete this return record?'))return;
+  await api('DELETE','/api/returns/'+editRetId);
+  returns_=returns_.filter(x=>x.id!==editRetId);closeModal('ret-modal');render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const months=getMonths();
+  if(!months.includes(curMon))curMon=months[0]||curMon;
+  document.getElementById('period-btn').textContent=monLbl(curMon);
+  if(activeTab==='dashboard') renderDash();
+  if(activeTab==='slots')     renderSlots();
+  if(activeTab==='expenses')  renderExp();
+  if(activeTab==='returns')   renderRet();
+  if(activeTab==='tax')       renderTax();
+}
+
+function setMon(m){curMon=m;render();}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function renderDash() {
+  const el=document.getElementById('dash-content');
+  const ms=slots.filter(s=>slotMon(s)===curMon);
+  const mc=ms.map(calcSlot);
+  const me=expenses.filter(e=>e.date?.slice(0,7)===curMon);
+  const totG=mc.reduce((a,c)=>a+c.income,0),totN=mc.reduce((a,c)=>a+c.net,0);
+  const totMi=mc.reduce((a,c)=>a+c.miles,0),totExp=me.reduce((a,e)=>a+e.amount,0);
+  const pendRet=returns_.filter(r=>r.status==='pending').length;
+  const pct=totG>0?totN/totG*100:0;
+  let wHtml='';
+  if(ms.length>0){
+    const avgH=mc.filter(c=>c.slotH>0).reduce((a,c)=>a+c.hourly,0)/Math.max(1,mc.filter(c=>c.slotH>0).length);
+    if(pct>=50)wHtml='<div class="worthit good"><h4>✓ Worth it this month</h4><p>Keeping '+pct.toFixed(0)+'% of gross. Avg '+fmtGBP(avgH)+'/hr net.</p></div>';
+    else if(pct>0)wHtml='<div class="worthit ok"><h4>⚠ Moderate margin</h4><p>Keeping '+pct.toFixed(0)+'% of gross. High mileage costs eating into profit.</p></div>';
+    else wHtml='<div class="worthit bad"><h4>✗ Loss this month</h4><p>Expenses exceed income. Review slot selection.</p></div>';
+  }
+  const recent=ms.slice(0,3).map(s=>{const c=calcSlot(s);return '<div class="slot-card" onclick="openSlotModal('+s.id+')"><div class="slot-top"><div><div class="st">'+(s.start_time||'?')+'–'+(s.end_time||'?')+'</div><div class="sd">'+dayLbl(s.date)+(c.earlyFinish?' · early':c.lateFinish?' · ran over':'')+'</div></div><div class="sr"><div class="sg">'+fmtGBP(c.income)+'</div><div class="sn '+(c.net>=0?'pos':'neg')+'">'+(c.net>=0?'+':'')+fmtGBP(c.net)+' net</div></div></div><div class="pills"><span class="pill">📍 '+fmtMi(c.miles)+'</span><span class="pill">🛡 '+c.actH.toFixed(1)+'h H&R</span>'+(c.earlyFinish?'<span class="pill g">⚡ early</span>':'')+(c.lateFinish?'<span class="pill am">⏱ over</span>':'')+'</div></div>';}).join('');
+  el.innerHTML='<div class="action-row"><div class="action-btn p" onclick="openSlotModal()"><div class="ai">➕</div><div class="al">Log slot</div><div class="as">Tap to add</div></div><div class="action-btn '+(pendRet>0?'am':'')+'" onclick="switchTab(\'returns\')"><div class="ai">📦</div><div class="al">'+(pendRet>0?pendRet+' pending return'+(pendRet>1?'s':''):'Returns')+'</div><div class="as">'+(pendRet>0?'Due by 10am':'Log undelivered')+'</div></div></div><div class="action-row"><div class="action-btn" onclick="openExpModal()"><div class="ai">⛽</div><div class="al">Log expense</div><div class="as">Fuel, parking…</div></div><div class="action-btn" onclick="switchTab(\'tax\')"><div class="ai">📋</div><div class="al">Tax / UC</div><div class="as">HMRC &amp; reports</div></div></div><div class="metric-grid"><div class="metric"><div class="ml">Gross income</div><div class="mv a">'+fmtGBP(totG)+'</div><div class="ms">'+ms.length+' slot'+(ms.length!==1?'s':'')+'</div></div><div class="metric"><div class="ml">Net profit</div><div class="mv '+(totN>=0?'g':'r')+'">'+fmtGBP(totN)+'</div><div class="ms">After mileage &amp; H&R</div></div><div class="metric"><div class="ml">Miles driven</div><div class="mv">'+totMi.toFixed(0)+'</div><div class="ms">'+fmtGBP(totMi*0.45)+' allowance</div></div><div class="metric"><div class="ml">Expenses</div><div class="mv am">'+fmtGBP(totExp)+'</div><div class="ms">'+me.length+' receipt'+(me.length!==1?'s':'')+'</div></div></div>'+wHtml+(ms.length>0?'<div class="sh"><h2>Recent slots</h2><button class="sh-a" onclick="switchTab(\'slots\')">See all</button></div>'+recent:'<div class="empty"><div class="ee">🚗</div><h3>No slots yet</h3><p>Tap "Log slot" above to start tracking.</p></div>');
+}
+
+// ── Slots ─────────────────────────────────────────────────────────────────────
+function renderSlots(){
+  const months=getMonths();
+  document.getElementById('slots-month-row').innerHTML=months.map(m=>'<button class="month-chip '+(m===curMon?'active':'')+'" onclick="setMon(\''+m+'\')">'+monLbl(m)+'</button>').join('');
+  const ms=slots.filter(s=>slotMon(s)===curMon).sort((a,b)=>b.date.localeCompare(a.date)||(b.start_time||'').localeCompare(a.start_time||''));
+  const el=document.getElementById('slots-content');
+  const hdr='<button class="btn btn-primary" style="margin-bottom:14px" onclick="openSlotModal()">+ Log new slot</button>';
+  if(ms.length===0){el.innerHTML=hdr+'<div class="empty"><div class="ee">📅</div><h3>No slots in '+monLbl(curMon)+'</h3><p>Tap above to add one.</p></div>';return;}
+  let lastD='';
+  el.innerHTML=hdr+ms.map(s=>{const c=calcSlot(s);let dh='';if(s.date!==lastD){lastD=s.date;dh='<div style="font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.06em;">'+dayLbl(s.date)+'</div>';}return dh+'<div class="slot-card" onclick="openSlotModal('+s.id+')"><div class="slot-top"><div><div class="st">'+(s.start_time||'?')+'–'+(s.end_time||'?')+'</div><div class="sd">'+(c.slotH>0?c.slotH.toFixed(1)+'h ':'')+' '+(c.earlyFinish?'· early':c.lateFinish?'· ran over':'')+'</div></div><div class="sr"><div class="sg">'+fmtGBP(c.income)+'</div><div class="sn '+(c.net>=0?'pos':'neg')+'">'+(c.net>=0?'+':'')+fmtGBP(c.net)+'</div></div></div><div class="pills">'+(s.odo_start&&s.odo_end?'<span class="pill">🔢 '+s.odo_start+'→'+s.odo_end+'</span>':'')+'<span class="pill">📍 '+fmtMi(c.miles)+'</span><span class="pill">−'+fmtGBP(c.milAllow)+' mi</span><span class="pill">🛡 '+c.actH.toFixed(2)+'h −'+fmtGBP(c.hrIns)+'</span>'+(c.lateFinish&&s.timecomp>0?'<span class="pill am">+'+fmtGBP(+s.timecomp)+' comp</span>':'')+(s.packages?'<span class="pill">'+s.packages+' pkgs</span>':'')+(s.notes?'<span class="pill">📝 '+s.notes.slice(0,20)+'</span>':'')+'</div></div>';}).join('');
+}
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+const CATI={fuel:'⛽',parking:'🅿️',phone:'📱',other:'📦'};
+const CATL={fuel:'Fuel',parking:'Parking/Toll',phone:'Phone',other:'Other'};
+function renderExp(){
+  const months=getMonths();
+  document.getElementById('exp-month-row').innerHTML=months.map(m=>'<button class="month-chip '+(m===curMon?'active':'')+'" onclick="setMon(\''+m+'\')">'+monLbl(m)+'</button>').join('');
+  const me=expenses.filter(e=>e.date?.slice(0,7)===curMon).sort((a,b)=>b.date.localeCompare(a.date));
+  const el=document.getElementById('exp-content');
+  const tots={fuel:0,parking:0,phone:0,other:0};me.forEach(e=>{tots[e.category]=(tots[e.category]||0)+e.amount;});
+  const totA=me.reduce((a,e)=>a+e.amount,0);
+  const sumH=Object.entries(tots).filter(([,v])=>v>0).map(([k,v])=>'<div class="pl-row"><span class="sl">'+CATI[k]+' '+CATL[k]+'</span><span class="neg">−'+fmtGBP(v)+'</span></div>').join('');
+  el.innerHTML='<button class="btn btn-primary" style="margin-bottom:14px" onclick="openExpModal()">+ Log expense</button>'+(totA>0?'<div class="pl-group"><div class="pl-row tot"><span>Total this month</span><span class="neg">−'+fmtGBP(totA)+'</span></div>'+sumH+'</div>':'')+'<div class="info-box"><strong>Note:</strong> Expenses are logged separately from slots and roll up into your monthly P&L and HMRC summary automatically.</div>'+(me.length===0?'<div class="empty"><div class="ee">🧾</div><h3>No expenses in '+monLbl(curMon)+'</h3><p>Log fuel receipts, parking, tolls here.</p></div>':me.map(e=>'<div class="list-item" onclick="openExpModal('+e.id+')"><div><div class="li-t">'+CATI[e.category]+' '+CATL[e.category]+(e.notes?' · '+e.notes:'')+'</div><div class="li-s">'+dayLbl(e.date)+'</div></div><div class="li-a">−'+fmtGBP(e.amount)+'</div></div>').join(''));
+}
+
+// ── Returns ───────────────────────────────────────────────────────────────────
+function renderRet(){
+  const el=document.getElementById('returns-content');
+  const now=new Date();
+  const pending=returns_.filter(r=>r.status==='pending').sort((a,b)=>a.date.localeCompare(b.date));
+  const returned=returns_.filter(r=>r.status==='returned').sort((a,b)=>b.date.localeCompare(a.date));
+  function retCard(r){
+    const rc=calcReturn(r),overdue=r.status==='pending'&&new Date(r.date+'T10:00:00')<=now;
+    const sc=r.status==='returned'?'returned':overdue?'overdue':'pending';
+    const sl=r.status==='returned'?'✓ Returned':overdue?'⚠ Overdue':'⏳ Pending';
+    const onclick=r.status==='pending'?'openRetModal('+r.id+',\'return\')':'openRetModal('+r.id+',\'log\')';
+    return '<div class="ret-card" onclick="'+onclick+'"><span class="ret-status '+sc+'">'+sl+'</span><div class="slot-top"><div><div class="st">'+r.packages+' package'+(r.packages!==1?'s':'')+'</div><div class="sd">Found '+dayLbl(r.date)+(r.notes?' · '+r.notes:'')+'</div></div><div class="sr">'+(r.status==='returned'&&rc.miles>0?'<div class="sg" style="color:var(--red)">−'+fmtGBP(rc.cost)+'</div><div style="font-size:12px;color:var(--muted)">'+fmtMi(rc.miles)+' return</div>':'')+(r.status==='pending'?'<div style="font-size:12px;color:var(--amber);font-weight:600">Due:<br/>'+r.deadline+'</div>':'')+'</div></div>'+(r.status==='pending'?'<div class="pills" style="margin-top:10px"><span class="pill am">Tap to log return trip</span></div>':'')+'</div>';
+  }
+  el.innerHTML='<button class="btn btn-amber" style="margin-bottom:14px" onclick="openRetModal(null,\'log\')">📦 Log undelivered packages</button>'+(pending.length>0?'<div class="sh"><h2>Pending ('+pending.length+')</h2></div>'+pending.map(retCard).join(''):'')+(returned.length>0?'<div class="sh"><h2>Returned</h2></div>'+returned.map(retCard).join(''):'')+(returns_.length===0?'<div class="empty"><div class="ee">📦</div><h3>No undelivered packages</h3><p>Log packages here when you can\'t complete delivery. Must be returned by 10am next day.</p></div>':'')+'<div class="info-box" style="margin-top:14px"><strong>Return trips:</strong> No H&R insurance. Only 45p/mile mileage allowance applies.</div>';
+}
+
+// ── Tax / UC ──────────────────────────────────────────────────────────────────
+function renderTax(){
+  const el=document.getElementById('tax-content');
+  const toggle='<div class="report-toggle"><button class="rt-btn '+(taxMode==='hmrc'?'active':'')+'" onclick="setTaxMode(\'hmrc\')">📋 HMRC Annual</button><button class="rt-btn '+(taxMode==='uc'?'active':'')+'" onclick="setTaxMode(\'uc\')">💷 Universal Credit</button></div>';
+  if(taxMode==='hmrc') renderHmrc(el,toggle);
+  else renderUC(el,toggle);
+}
+function setTaxMode(m){taxMode=m;render();}
+function setTY(y){curTY=y;render();}
+function setUCMon(m){ucMon=m;render();}
+
+function renderHmrc(el,toggle){
+  const tys=getTYs();
+  const ty=curTY,rate1=hmrcRate(ty);
+  const drFrom=document.getElementById('hmrc-from')?.value||ty+'-04-06';
+  const drTo=document.getElementById('hmrc-to')?.value||(ty+1)+'-04-05';
+  const fD=new Date(drFrom+'T00:00:00'),tD=new Date(drTo+'T23:59:59');
+  const ys=slots.filter(s=>{if(!s.date)return false;const d=new Date(s.date+'T00:00:00');return d>=fD&&d<=tD;});
+  const ye=expenses.filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T00:00:00');return d>=fD&&d<=tD;});
+  const yr=returns_.filter(r=>r.status==='returned'&&r.ret_date).filter(r=>{const d=new Date(r.ret_date+'T00:00:00');return d>=fD&&d<=tD;});
+  const yc=ys.map(calcSlot);
+  const totInc=yc.reduce((a,c)=>a+c.income,0);
+  const totHr=yc.reduce((a,c)=>a+c.hrIns,0);
+  const totOthS=yc.reduce((a,c)=>a+c.other,0);
+  const totFuel=ye.filter(e=>e.category==='fuel').reduce((a,e)=>a+e.amount,0);
+  const totOthE=ye.filter(e=>e.category!=='fuel').reduce((a,e)=>a+e.amount,0);
+  const slotMi=yc.reduce((a,c)=>a+c.miles,0);
+  const retMi=yr.reduce((a,r)=>a+calcReturn(r).miles,0);
+  const totMi=slotMi+retMi;
+  const totMilA=calcHmrcMil(totMi,ty);
+  const t1mi=Math.min(totMi,10000),t2mi=Math.max(0,totMi-10000);
+  const totAll=+(totMilA+totHr+totOthS+totOthE).toFixed(2);
+  const profit=+(totInc-totAll).toFixed(2);
+  const tyRow=tys.map(y=>'<button class="month-chip '+(y===curTY?'active':'')+'" onclick="setTY('+y+')">'+tyLbl(y)+'</button>').join('');
+  el.innerHTML=toggle+'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;">'+tyRow+'</div><div class="date-range"><label>📅 Date range — tax year '+tyLbl(ty)+'</label><div class="dr-row"><input type="date" id="hmrc-from" value="'+drFrom+'" onchange="render()"/><span>to</span><input type="date" id="hmrc-to" value="'+drTo+'" onchange="render()"/></div></div><div class="banner '+(profit>=0?'g':'r')+'"><div><div class="bl">Trading profit</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+ys.length+' slots · '+totMi.toFixed(0)+' miles total</div></div><div class="bv">'+fmtGBP(profit)+'</div></div><div class="tax-block"><h3>📋 SA103 — '+tyLbl(ty)+'</h3><div class="tax-row"><span class="tl">Total receipts</span><span>'+fmtGBP(totInc)+'</span></div><div style="padding:4px 0 6px"><div class="tier-row"><span>Mileage: first '+t1mi.toFixed(0)+' mi × '+(rate1*100).toFixed(0)+'p</span><span>−'+fmtGBP(t1mi*rate1)+'</span></div>'+(t2mi>0?'<div class="tier-row"><span>Mileage: next '+t2mi.toFixed(0)+' mi × 25p (over 10,000)</span><span>−'+fmtGBP(t2mi*0.25)+'</span></div>':'')+'<div class="tier-row" style="border-top:1px solid var(--border);padding-top:4px"><span>Total mileage allowance</span><span>−'+fmtGBP(totMilA)+'</span></div></div><div class="tax-row"><span class="tl">H&R insurance (£1.49/hr)</span><span style="color:var(--red)">−'+fmtGBP(totHr)+'</span></div>'+(totOthS>0?'<div class="tax-row"><span class="tl">Parking, tolls</span><span style="color:var(--red)">−'+fmtGBP(totOthS)+'</span></div>':'')+(totOthE>0?'<div class="tax-row"><span class="tl">Other expenses</span><span style="color:var(--red)">−'+fmtGBP(totOthE)+'</span></div>':'')+(totFuel>0?'<div class="tax-row"><span class="tl" style="color:var(--muted)">Fuel (reference only)</span><span style="color:var(--muted)">£'+totFuel.toFixed(2)+'</span></div>':'')+'<div class="tax-row"><span style="font-weight:700">Total allowable expenses</span><span style="color:var(--red)">−'+fmtGBP(totAll)+'</span></div><div class="tax-row"><span style="font-weight:700">Trading profit (box 12/13)</span><span style="color:'+(profit>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmtGBP(profit)+'</span></div></div><div class="info-box"><strong>Rate '+tyLbl(ty)+':</strong> '+(rate1*100).toFixed(0)+'p/mile first 10,000 miles, then 25p/mile.'+(ty>=2026?' Rate increased from 45p to 55p from 6 April 2026.':' Rate was 45p for 2025/26 and earlier.')+'</div><div class="sh"><h2>Export</h2></div><div class="export-grid"><div class="export-btn" onclick="exportCSV()"><div class="ei">📄</div><div class="el">CSV export</div></div><div class="export-btn" onclick="window.print()"><div class="ei">🖨</div><div class="el">Print / PDF</div></div></div>';
+}
+
+function renderUC(el,toggle){
+  const months=getMonths();
+  if(!ucMon||!months.includes(ucMon))ucMon=months[0]||'';
+  const [y,mo]=(ucMon||curMon).split('-').map(Number);
+  const lastDay=new Date(y,mo,0).getDate();
+  const defF=y+'-'+String(mo).padStart(2,'0')+'-01';
+  const defT=y+'-'+String(mo).padStart(2,'0')+'-'+lastDay;
+  const drF=document.getElementById('uc-from')?.value||defF;
+  const drT=document.getElementById('uc-to')?.value||defT;
+  const fD=new Date(drF+'T00:00:00'),tD=new Date(drT+'T23:59:59');
+  const us=slots.filter(s=>{if(!s.date)return false;const d=new Date(s.date+'T00:00:00');return d>=fD&&d<=tD;});
+  const ue=expenses.filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T00:00:00');return d>=fD&&d<=tD;});
+  const ur=returns_.filter(r=>r.status==='returned'&&r.ret_date).filter(r=>{const d=new Date(r.ret_date+'T00:00:00');return d>=fD&&d<=tD;});
+  const uc=us.map(calcSlot);
+  const totInc=uc.reduce((a,c)=>a+c.income,0),totHr=uc.reduce((a,c)=>a+c.hrIns,0),totOthS=uc.reduce((a,c)=>a+c.other,0),totExpA=ue.reduce((a,e)=>a+e.amount,0);
+  const slotMi=uc.reduce((a,c)=>a+c.miles,0),retMi=ur.reduce((a,r)=>a+calcReturn(r).miles,0),totMi=slotMi+retMi;
+  const ucMilA=calcUcMil(totMi),t1mi=Math.min(totMi,833),t2mi=Math.max(0,totMi-833);
+  const totAll=+(ucMilA+totHr+totOthS+totExpA).toFixed(2),net=+(totInc-totAll).toFixed(2);
+  const allRows=months.map(m=>{const ms2=slots.filter(s=>slotMon(s)===m),mc2=ms2.map(calcSlot),mI=mc2.reduce((a,c)=>a+c.income,0),mMi=mc2.reduce((a,c)=>a+c.miles,0),mRM=returns_.filter(r=>r.status==='returned'&&r.ret_date?.slice(0,7)===m).reduce((a,r)=>a+calcReturn(r).miles,0),mTM=mMi+mRM,mMA=calcUcMil(mTM),mHr=mc2.reduce((a,c)=>a+c.hrIns,0),mO=mc2.reduce((a,c)=>a+c.other,0),mE=expenses.filter(e=>e.date?.slice(0,7)===m).reduce((a,e)=>a+e.amount,0),mN=+(mI-mMA-mHr-mO-mE).toFixed(2);return{m,mI,mN,slots:ms2.length,mTM};}).filter(r=>r.slots>0);
+  const monRow=months.map(m=>'<button class="month-chip '+(m===ucMon?'active':'')+'" onclick="setUCMon(\''+m+'\')">'+monLbl(m)+'</button>').join('');
+  el.innerHTML=toggle+'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;">'+monRow+'</div><div class="date-range"><label>📅 Assessment period — '+monLbl(ucMon)+'</label><div class="dr-row"><input type="date" id="uc-from" value="'+drF+'" onchange="render()"/><span>to</span><input type="date" id="uc-to" value="'+drT+'" onchange="render()"/></div><div style="font-size:11px;color:var(--muted);margin-top:6px">Adjust if your UC assessment period doesn\'t match the calendar month.</div></div><div class="banner '+(net>=0?'g':'r')+'"><div><div class="bl">Net earnings to report</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+us.length+' slots · '+totMi.toFixed(0)+' miles</div></div><div class="bv">'+fmtGBP(net)+'</div></div><div class="tax-block"><h3>💷 UC journal entry — '+monLbl(ucMon||curMon)+'</h3><div class="tax-row"><span class="tl">Total income</span><span>'+fmtGBP(totInc)+'</span></div><div style="padding:4px 0 6px"><div class="tier-row"><span>Mileage: first '+t1mi.toFixed(0)+' mi × 45p</span><span>−'+fmtGBP(t1mi*0.45)+'</span></div>'+(t2mi>0?'<div class="tier-row"><span>Mileage: next '+t2mi.toFixed(0)+' mi × 25p (over 833)</span><span>−'+fmtGBP(t2mi*0.25)+'</span></div>':'')+'<div class="tier-row" style="border-top:1px solid var(--border);padding-top:4px"><span>Total mileage allowance</span><span>−'+fmtGBP(ucMilA)+'</span></div></div><div class="tax-row"><span class="tl">H&R insurance (£1.49/hr)</span><span style="color:var(--red)">−'+fmtGBP(totHr)+'</span></div>'+(totOthS>0?'<div class="tax-row"><span class="tl">Parking, tolls</span><span style="color:var(--red)">−'+fmtGBP(totOthS)+'</span></div>':'')+(totExpA>0?'<div class="tax-row"><span class="tl">Other expenses</span><span style="color:var(--red)">−'+fmtGBP(totExpA)+'</span></div>':'')+'<div class="tax-row"><span style="font-weight:700">Net earnings to declare</span><span style="color:'+(net>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmtGBP(net)+'</span></div></div><div class="info-box"><strong>UC mileage:</strong> 45p first 833 miles, then 25p/mile. Threshold resets every assessment period.'+(totMi>833?' <strong>You exceeded 833 miles this period</strong> — '+t2mi.toFixed(0)+' miles at 25p.':' You are within the 833-mile 45p threshold.')+'</div>'+(allRows.length>1?'<div class="tax-block"><h3>All months summary</h3>'+allRows.map(r=>'<div class="tax-row" onclick="setUCMon(\''+r.m+'\')" style="cursor:pointer"><span class="tl">'+monLbl(r.m)+' ('+r.slots+' slots · '+r.mTM.toFixed(0)+' mi)</span><span style="color:'+(r.mN>=0?'var(--green)':'var(--red)')+'">'+fmtGBP(r.mN)+'</span></div>').join('')+'<div class="tax-row"><span style="font-weight:700">Total all periods</span><span style="color:var(--amber);font-weight:700">'+fmtGBP(allRows.reduce((a,r)=>a+r.mN,0))+'</span></div></div>':'')+'<div class="sh"><h2>Export</h2></div><div class="export-grid"><div class="export-btn" onclick="exportCSV()"><div class="ei">📄</div><div class="el">CSV export</div></div><div class="export-btn" onclick="window.print()"><div class="ei">🖨</div><div class="el">Print / PDF</div></div></div>';
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function exportCSV(){
+  const rows=[['Type','Date','Start','Slot End','Actual Finish','Slot Hrs','Actual Hrs','Odo Start','Odo End','Miles','Gross','Tips','TimeComp','Total Income','Mileage Allow','H&R Ins','Other Exp','Net HMRC','Packages','Notes']];
+  slots.sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>{const c=calcSlot(s);rows.push(['Slot',s.date,s.start_time,s.end_time,s.actual_end||'',c.slotH.toFixed(2),c.actH.toFixed(2),s.odo_start||'',s.odo_end||'',c.miles,c.gross,c.tips,c.tc,c.income,c.milAllow,c.hrIns,c.other,c.net,s.packages||0,s.notes||'']);});
+  rows.push([]);rows.push(['Expenses','Date','Category','Amount','Notes']);
+  expenses.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{rows.push(['Expense',e.date,CATL[e.category],e.amount,e.notes||'']);});
+  rows.push([]);rows.push(['Returns','Date Found','Packages','Status','Return Date','Return Miles','Cost','Notes']);
+  returns_.forEach(r=>{const rc=calcReturn(r);rows.push(['Return',r.date,r.packages,r.status,r.ret_date||'',rc.miles,rc.cost,r.notes||'']);});
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='flextrack_export.csv';a.click();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  const hash=location.hash;
+  if(hash==='#register'){showRegister();}
+  if(token){
+    try{
+      const me=await api('GET','/api/me');
+      showTrialInfo(me);
+      await loadAll();
+    }catch(e){
+      localStorage.removeItem('ft_token');
+    }
+  }
+})();
+</script>
+</body>
+</html>
