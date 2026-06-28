@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FlexTrack – Amazon Flex Earnings Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:#0f1117;color:#e8eaf2;min-height:100vh;}
+.hero{max-width:480px;margin:0 auto;padding:60px 24px 40px;}
+.logo{font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:8px;}
+.logo span{color:#4f7bff;}
+.tagline{font-size:15px;color:#7880a0;margin-bottom:48px;line-height:1.6;}
+.feature{display:flex;gap:14px;margin-bottom:22px;align-items:flex-start;}
+.feature .fi{font-size:22px;width:36px;flex-shrink:0;margin-top:2px;}
+.feature h3{font-size:14px;font-weight:600;margin-bottom:3px;}
+.feature p{font-size:13px;color:#7880a0;line-height:1.5;}
+.cta-section{margin-top:48px;}
+.trial-badge{display:inline-block;background:rgba(52,201,132,0.12);border:1px solid rgba(52,201,132,0.3);color:#34c984;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;margin-bottom:20px;}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;text-align:center;text-decoration:none;cursor:pointer;margin-bottom:12px;}
+.btn-primary{background:#4f7bff;color:white;}
+.btn-ghost{background:transparent;border:1px solid #2a2f45;color:#9099b8;}
+.footer{text-align:center;font-size:12px;color:#4a5068;margin-top:48px;padding-bottom:40px;}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="logo">Flex<span>Track</span></div>
+  <div class="tagline">The earnings tracker built for Amazon Flex drivers.<br>Log slots, track mileage, and generate HMRC &amp; Universal Credit reports.</div>
+
+  <div class="feature">
+    <div class="fi">🚗</div>
+    <div><h3>Odometer-based mileage</h3><p>Enter start and end odometer readings — miles calculate automatically. HMRC 55p/mile rate applied correctly.</p></div>
+  </div>
+  <div class="feature">
+    <div class="fi">🛡</div>
+    <div><h3>Hire &amp; Reward insurance</h3><p>Auto-calculated from actual hours driven at £1.49/hr — deducted on top of mileage.</p></div>
+  </div>
+  <div class="feature">
+    <div class="fi">📋</div>
+    <div><h3>HMRC Self Assessment</h3><p>SA103-ready figures with tiered mileage (55p/25p). Custom date range for any period.</p></div>
+  </div>
+  <div class="feature">
+    <div class="fi">💷</div>
+    <div><h3>Universal Credit</h3><p>Monthly UC earnings report with 45p/25p tiered mileage (833-mile threshold). Adjustable assessment period.</p></div>
+  </div>
+  <div class="feature">
+    <div class="fi">📦</div>
+    <div><h3>Undelivered package returns</h3><p>Track packages that must be returned by 10am next day, with return trip mileage logged separately.</p></div>
+  </div>
+
+  <div class="cta-section">
+    <div class="trial-badge">✓ First month free — no card required</div>
+    <a href="/app#register" class="btn btn-primary">Create free account</a>
+    <a href="/app#login" class="btn btn-ghost">Sign in</a>
+  </div>
+
+  <div class="footer">
+    FlexTrack · Built for UK Amazon Flex drivers<br>
+    HMRC 55p/mile rate 2026/27 · UC 45p/833mi threshold
+  </div>
+</div>
+</body>
+</html>
