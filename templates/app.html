@@ -516,12 +516,21 @@ function dayLbl(d) {
 }
 function monLbl(m) {
   if (!m) return '';
-  const parts = String(m).slice(0,7).split('-');
-  if (parts.length < 2) return m;
-  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+parts[1]-1]+' '+parts[0];
+  const s = String(m).slice(0,7);
+  const parts = s.split('-');
+  if (parts.length < 2 || isNaN(+parts[1])) return s;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mo = months[+parts[1]-1];
+  return mo ? mo+' '+parts[0] : s;
 }
-function tyLbl(y) { return y+'–'+String(y+1).slice(2); }
-function slotMon(s) { return s.date?String(s.date).slice(0,7):''; }
+function tyLbl(y) { y=parseInt(y)||2026; return y+'–'+String(y+1).slice(2); }
+function slotMon(s) { 
+  if (!s.date) return '';
+  const d = String(s.date);
+  // Handle ISO format: 2026-06-11 or 2026-06-11T00:00:00+00:00
+  const match = d.match(/^(\d{4}-\d{2})/);
+  return match ? match[1] : '';
+}
 
 // ── State & Data ──────────────────────────────────────────────────────────────
 let token = localStorage.getItem('ft_token') || '';
@@ -629,7 +638,7 @@ function initState() {
 }
 
 function getMonths() {
-  const ms=new Set([...slots.map(s=>slotMon(s)),...expenses.map(e=>e.date?.slice(0,7)||'')].filter(Boolean));
+  const ms=new Set([...slots.map(s=>slotMon(s)),...expenses.map(e=>{ if(!e.date) return ''; const m=String(e.date).match(/^(\d{4}-\d{2})/); return m?m[1]:''; })].filter(Boolean));
   const n=new Date(); ms.add(n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'));
   return [...ms].sort().reverse();
 }
