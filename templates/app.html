@@ -808,15 +808,22 @@ async function deleteReturn(){
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
-  const months=getMonths();
-  if(!months.includes(curMon))curMon=months[0]||curMon;
-  document.getElementById('period-btn').textContent=monLbl(curMon);
-  if(activeTab==='dashboard') renderDash();
-  if(activeTab==='slots')     renderSlots();
-  if(activeTab==='expenses')  renderExp();
-  if(activeTab==='returns')   renderRet();
-  if(activeTab==='tax')       renderTax();
-  if(activeTab==='reports') { try { renderReports(); } catch(e) { const el=document.getElementById('reports-content'); if(el) el.innerHTML='<div class="empty"><div class="ee">⚠️</div><h3>Error loading reports</h3><p>'+e.message+'</p></div>'; console.error('Reports error:',e); } }
+  try {
+    const months=getMonths();
+    if(!months.includes(curMon))curMon=months[0]||curMon;
+    const pb=document.getElementById('period-btn');
+    if(pb) pb.textContent=monLbl(curMon);
+    if(activeTab==='dashboard') renderDash();
+    else if(activeTab==='slots')     renderSlots();
+    else if(activeTab==='expenses')  renderExp();
+    else if(activeTab==='returns')   renderRet();
+    else if(activeTab==='tax')       renderTax();
+    else if(activeTab==='reports')   renderReports();
+  } catch(e) {
+    console.error('Render error:', e);
+    const dc = document.getElementById('dash-content');
+    if (dc && activeTab==='dashboard') dc.innerHTML='<div style="padding:20px;color:red;font-size:13px;"><strong>Error:</strong> '+e.message+'</div>';
+  }
 }
 
 function setMon(m){curMon=m;render();}
