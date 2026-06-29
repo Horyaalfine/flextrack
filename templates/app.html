@@ -1025,7 +1025,7 @@ function renderReports() {
   function sortBtn(col, label) {
     const active = rptSort===col ? ' sort-active' : '';
     const arrow = rptSort===col ? (rptSortDir===-1?' ↓':' ↑') : '';
-    return '<button class="'+active+'" onclick="setRptSort(''+col+'')">'+label+arrow+'</button>';
+    return '<button class="'+active+'" onclick="setRptSort(\"'+col+'\")">'+label+arrow+'</button>';
   }
 
   const tableRows = indexed.map(({s,c}) =>
