@@ -816,7 +816,7 @@ function render() {
   if(activeTab==='expenses')  renderExp();
   if(activeTab==='returns')   renderRet();
   if(activeTab==='tax')       renderTax();
-  if(activeTab==='reports')   renderReports();
+  if(activeTab==='reports') { try { renderReports(); } catch(e) { const el=document.getElementById('reports-content'); if(el) el.innerHTML='<div class="empty"><div class="ee">⚠️</div><h3>Error loading reports</h3><p>'+e.message+'</p></div>'; console.error('Reports error:',e); } }
 }
 
 function setMon(m){curMon=m;render();}
@@ -947,10 +947,23 @@ function renderUC(el,toggle){
 // ── Reports ───────────────────────────────────────────────────────────────────
 function renderReports() {
   const el = document.getElementById('reports-content');
+  if (!el) return;
   const now = new Date();
   // Default date range: current month
-  if (!rptFrom) rptFrom = curMon + '-01';
-  if (!rptTo) { const d = new Date(now.getFullYear(), now.getMonth()+1, 0); rptTo = d.toISOString().slice(0,10); }
+  try {
+    if (!rptFrom || rptFrom === '') {
+      const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+      rptFrom = y+'-'+m+'-01';
+    }
+    if (!rptTo || rptTo === '') {
+      const last = new Date(now.getFullYear(), now.getMonth()+1, 0);
+      rptTo = last.toISOString().slice(0,10);
+    }
+  } catch(e) {
+    const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+    rptFrom = y+'-'+m+'-01';
+    rptTo = y+'-'+m+'-30';
+  }
 
   const fD = new Date(rptFrom+'T00:00:00'), tD = new Date(rptTo+'T23:59:59');
   let filtered = slots.filter(s => {
