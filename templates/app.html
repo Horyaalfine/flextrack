@@ -829,7 +829,13 @@ function render() {
     else if(activeTab==='expenses')  renderExp();
     else if(activeTab==='returns')   renderRet();
     else if(activeTab==='tax')       renderTax();
-    else if(activeTab==='reports')   renderReports();
+    else if(activeTab==='reports') {
+      try { renderReports(); }
+      catch(e) {
+        const el=document.getElementById('reports-content');
+        if(el) el.innerHTML='<div style="padding:20px;background:#fee;border-radius:10px;margin:10px;"><strong style="color:red">Reports error:</strong><br><pre style="font-size:11px;white-space:pre-wrap">'+e.stack+'</pre></div>';
+      }
+    }
   } catch(e) {
     console.error('Render error:', e);
     const dc = document.getElementById('dash-content');
