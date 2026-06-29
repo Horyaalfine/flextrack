@@ -602,7 +602,18 @@ async function loadAll() {
       api('GET','/api/returns')
     ]);
     // normalise keys from DB
-    slots    = slots.map(s=>({...s, start:s.start_time, end:s.end_time, actual_end:s.actual_end, other:s.other_expenses, pkgs:s.packages}));
+    slots    = slots.map(s=>({...s, 
+      start:s.start_time||'', 
+      end:s.end_time||'', 
+      actual_end:s.actual_end||'', 
+      other:+(s.other_expenses||0), 
+      pkgs:+(s.packages||0),
+      gross:+(s.gross||0),
+      tips:+(s.tips||0),
+      timecomp:+(s.timecomp||0),
+      odo_start:+(s.odo_start||0),
+      odo_end:+(s.odo_end||0)
+    }));
     initState();
     render();
   } catch(e) {
