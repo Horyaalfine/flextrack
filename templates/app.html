@@ -811,6 +811,7 @@ function render() {
   if(activeTab==='expenses')  renderExp();
   if(activeTab==='returns')   renderRet();
   if(activeTab==='tax')       renderTax();
+  if(activeTab==='reports')   renderReports();
 }
 
 function setMon(m){curMon=m;render();}
@@ -936,6 +937,202 @@ function renderUC(el,toggle){
   const allRows=months.map(m=>{const ms2=slots.filter(s=>slotMon(s)===m),mc2=ms2.map(calcSlot),mI=mc2.reduce((a,c)=>a+c.income,0),mMi=mc2.reduce((a,c)=>a+c.miles,0),mRM=returns_.filter(r=>r.status==='returned'&&r.ret_date?.slice(0,7)===m).reduce((a,r)=>a+calcReturn(r).miles,0),mTM=mMi+mRM,mMA=calcUcMil(mTM),mHr=mc2.reduce((a,c)=>a+c.hrIns,0),mO=mc2.reduce((a,c)=>a+c.other,0),mE=expenses.filter(e=>e.date?.slice(0,7)===m).reduce((a,e)=>a+e.amount,0),mN=+(mI-mMA-mHr-mO-mE).toFixed(2);return{m,mI,mN,slots:ms2.length,mTM};}).filter(r=>r.slots>0);
   const monRow=months.map(m=>'<button class="month-chip '+(m===ucMon?'active':'')+'" onclick="setUCMon(\''+m+'\')">'+monLbl(m)+'</button>').join('');
   el.innerHTML=toggle+'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;">'+monRow+'</div><div class="date-range"><label>📅 Assessment period — '+monLbl(ucMon)+'</label><div class="dr-row"><input type="date" id="uc-from" value="'+drF+'" onchange="render()"/><span>to</span><input type="date" id="uc-to" value="'+drT+'" onchange="render()"/></div><div style="font-size:11px;color:var(--muted);margin-top:6px">Adjust if your UC assessment period doesn\'t match the calendar month.</div></div><div class="banner '+(net>=0?'g':'r')+'"><div><div class="bl">Net earnings to report</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+us.length+' slots · '+totMi.toFixed(0)+' miles</div></div><div class="bv">'+fmtGBP(net)+'</div></div><div class="tax-block"><h3>💷 UC journal entry — '+monLbl(ucMon||curMon)+'</h3><div class="tax-row"><span class="tl">Total income</span><span>'+fmtGBP(totInc)+'</span></div><div style="padding:4px 0 6px"><div class="tier-row"><span>Mileage: first '+t1mi.toFixed(0)+' mi × 45p</span><span>−'+fmtGBP(t1mi*0.45)+'</span></div>'+(t2mi>0?'<div class="tier-row"><span>Mileage: next '+t2mi.toFixed(0)+' mi × 25p (over 833)</span><span>−'+fmtGBP(t2mi*0.25)+'</span></div>':'')+'<div class="tier-row" style="border-top:1px solid var(--border);padding-top:4px"><span>Total mileage allowance</span><span>−'+fmtGBP(ucMilA)+'</span></div></div><div class="tax-row"><span class="tl">H&R insurance (£1.49/hr)</span><span style="color:var(--red)">−'+fmtGBP(totHr)+'</span></div>'+(totOthS>0?'<div class="tax-row"><span class="tl">Parking, tolls</span><span style="color:var(--red)">−'+fmtGBP(totOthS)+'</span></div>':'')+(totExpA>0?'<div class="tax-row"><span class="tl">Other expenses</span><span style="color:var(--red)">−'+fmtGBP(totExpA)+'</span></div>':'')+'<div class="tax-row"><span style="font-weight:700">Net earnings to declare</span><span style="color:'+(net>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmtGBP(net)+'</span></div></div><div class="info-box"><strong>UC mileage:</strong> 45p first 833 miles, then 25p/mile. Threshold resets every assessment period.'+(totMi>833?' <strong>You exceeded 833 miles this period</strong> — '+t2mi.toFixed(0)+' miles at 25p.':' You are within the 833-mile 45p threshold.')+'</div>'+(allRows.length>1?'<div class="tax-block"><h3>All months summary</h3>'+allRows.map(r=>'<div class="tax-row" onclick="setUCMon(\''+r.m+'\')" style="cursor:pointer"><span class="tl">'+monLbl(r.m)+' ('+r.slots+' slots · '+r.mTM.toFixed(0)+' mi)</span><span style="color:'+(r.mN>=0?'var(--green)':'var(--red)')+'">'+fmtGBP(r.mN)+'</span></div>').join('')+'<div class="tax-row"><span style="font-weight:700">Total all periods</span><span style="color:var(--amber);font-weight:700">'+fmtGBP(allRows.reduce((a,r)=>a+r.mN,0))+'</span></div></div>':'')+'<div class="sh"><h2>Export</h2></div><div class="export-grid"><div class="export-btn" onclick="exportCSV()"><div class="ei">📄</div><div class="el">CSV export</div></div><div class="export-btn" onclick="window.print()"><div class="ei">🖨</div><div class="el">Print / PDF</div></div></div>';
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+function renderReports() {
+  const el = document.getElementById('reports-content');
+  const now = new Date();
+  // Default date range: current month
+  if (!rptFrom) rptFrom = curMon + '-01';
+  if (!rptTo) { const d = new Date(now.getFullYear(), now.getMonth()+1, 0); rptTo = d.toISOString().slice(0,10); }
+
+  const fD = new Date(rptFrom+'T00:00:00'), tD = new Date(rptTo+'T23:59:59');
+  let filtered = slots.filter(s => {
+    if (!s.date) return false;
+    const d = new Date(String(s.date).slice(0,10)+'T00:00:00');
+    return d >= fD && d <= tD;
+  });
+
+  // Day of week filter
+  if (rptDayFilter !== '') {
+    filtered = filtered.filter(s => {
+      const d = new Date(String(s.date).slice(0,10)+'T00:00:00');
+      return d.getDay() === parseInt(rptDayFilter);
+    });
+  }
+
+  const calcs = filtered.map(calcSlot);
+  const totInc  = calcs.reduce((a,c)=>a+c.income,0);
+  const totNet  = calcs.reduce((a,c)=>a+c.net,0);
+  const totMil  = calcs.reduce((a,c)=>a+c.milAllow,0);
+  const totHr   = calcs.reduce((a,c)=>a+c.hrIns,0);
+  const totMi   = calcs.reduce((a,c)=>a+c.miles,0);
+  const totOth  = calcs.reduce((a,c)=>a+c.other,0);
+  const fltExp  = expenses.filter(e => { if(!e.date)return false; const d=new Date(String(e.date).slice(0,10)+'T00:00:00'); return d>=fD&&d<=tD; });
+  const totExp  = fltExp.reduce((a,e)=>a+e.amount,0);
+  const avgHr   = calcs.filter(c=>c.slotH>0).length > 0 ? calcs.filter(c=>c.slotH>0).reduce((a,c)=>a+c.hourly,0)/calcs.filter(c=>c.slotH>0).length : 0;
+  const bestSlot = filtered.length > 0 ? filtered.reduce((b,s,i) => calcs[i].net > (b ? calcSlot(b).net : -Infinity) ? s : b, null) : null;
+  const worstSlot= filtered.length > 0 ? filtered.reduce((b,s,i) => calcs[i].net < (b ? calcSlot(b).net : Infinity) ? s : b, null) : null;
+
+  // Chart data — group by week
+  const weekMap = {};
+  filtered.forEach((s,i) => {
+    const d = new Date(String(s.date).slice(0,10)+'T00:00:00');
+    const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay() + 1);
+    const wk = weekStart.toISOString().slice(0,10);
+    if (!weekMap[wk]) weekMap[wk] = {net:0, gross:0, slots:0};
+    weekMap[wk].net += calcs[i].net;
+    weekMap[wk].gross += calcs[i].income;
+    weekMap[wk].slots++;
+  });
+  const weeks = Object.keys(weekMap).sort();
+  const maxAbs = weeks.length > 0 ? Math.max(...weeks.map(w=>Math.abs(weekMap[w].net)), 1) : 1;
+  const chartBars = weeks.map(w => {
+    const pct = Math.round((Math.abs(weekMap[w].net)/maxAbs)*100);
+    const pos = weekMap[w].net >= 0;
+    const d = new Date(w+'T00:00:00');
+    const lbl = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();
+    return '<div class="bar-col"><div class="bar-val" style="color:'+(pos?'var(--green)':'var(--red)')+'">'+fmtGBP(weekMap[w].net)+'</div><div class="bar '+(pos?'pos':'neg')+'" style="height:'+pct+'%"></div><div class="bar-lbl">'+lbl+'</div></div>';
+  }).join('');
+
+  // Day of week analysis
+  const dayTotals = Array(7).fill(null).map(()=>({net:0,slots:0}));
+  filtered.forEach((s,i) => {
+    const d = new Date(String(s.date).slice(0,10)+'T00:00:00');
+    dayTotals[d.getDay()].net += calcs[i].net;
+    dayTotals[d.getDay()].slots++;
+  });
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayCells = dayTotals.map((dt,i) => {
+    const avg = dt.slots > 0 ? dt.net/dt.slots : 0;
+    return '<div class="day-cell"><div class="dn">'+dayNames[i]+'</div><div class="dv" style="color:'+(avg>=0?'var(--green)':'var(--red)')+'">'+( dt.slots > 0 ? fmtGBP(avg) : '—')+'</div><div class="dc">'+(dt.slots>0?dt.slots+' slot'+(dt.slots!==1?'s':''):'')+'</div></div>';
+  }).join('');
+
+  // Sorted slot table
+  const indexed = filtered.map((s,i)=>({s,c:calcs[i]}));
+  indexed.sort((a,b) => {
+    let va, vb;
+    if (rptSort==='date') { va=a.s.date; vb=b.s.date; }
+    else if (rptSort==='gross') { va=a.c.income; vb=b.c.income; }
+    else if (rptSort==='net') { va=a.c.net; vb=b.c.net; }
+    else if (rptSort==='hourly') { va=a.c.hourly; vb=b.c.hourly; }
+    else { va=a.s.date; vb=b.s.date; }
+    return va < vb ? rptSortDir : va > vb ? -rptSortDir : 0;
+  });
+
+  function sortBtn(col, label) {
+    const active = rptSort===col ? ' sort-active' : '';
+    const arrow = rptSort===col ? (rptSortDir===-1?' ↓':' ↑') : '';
+    return '<button class="'+active+'" onclick="setRptSort(''+col+'')">'+label+arrow+'</button>';
+  }
+
+  const tableRows = indexed.map(({s,c}) =>
+    '<div class="slot-table-row" onclick="openSlotModal('+s.id+')">'
+    +'<div><div style="font-weight:500">'+dayLbl(s.date)+'</div><div style="font-size:11px;color:var(--muted)">'+(s.start_time||'')+'–'+(s.end_time||'')+' · '+fmtMi(c.miles)+'</div></div>'
+    +'<div style="color:var(--accent)">'+fmtGBP(c.income)+'</div>'
+    +'<div style="color:'+(c.net>=0?'var(--green)':'var(--red)')+'">'+fmtGBP(c.net)+'</div>'
+    +'<div style="color:var(--muted2)">'+fmtGBP(c.hourly)+'/h</div>'
+    +'</div>'
+  ).join('');
+
+  // Day filter chips
+  const dayChips = ['All',...dayNames].map((d,i) => {
+    const val = i===0 ? '' : String(i-1);
+    const active = rptDayFilter===val ? ' active' : '';
+    return '<button class="fchip'+active+'" onclick="setRptDay(''+val+'')">'+d+'</button>';
+  }).join('');
+
+  el.innerHTML = `
+    <div class="filter-bar">
+      <label>📅 Date range</label>
+      <div class="filter-row">
+        <input type="date" value="${rptFrom}" onchange="rptFrom=this.value;renderReports()"/>
+        <span style="color:var(--muted);font-size:13px">to</span>
+        <input type="date" value="${rptTo}" onchange="rptTo=this.value;renderReports()"/>
+      </div>
+      <div class="filter-chips" style="margin-top:10px">
+        <button class="fchip" onclick="setRptPreset('week')">This week</button>
+        <button class="fchip" onclick="setRptPreset('month')">This month</button>
+        <button class="fchip" onclick="setRptPreset('ty')">Tax year</button>
+        <button class="fchip" onclick="setRptPreset('all')">All time</button>
+      </div>
+      <div style="margin-top:10px"><label>Day of week</label><div class="filter-chips">${dayChips}</div></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="sv a">${fmtGBP(totInc)}</div><div class="sl">Gross income</div></div>
+      <div class="stat-card"><div class="sv ${totNet>=0?'g':'r'}">${fmtGBP(totNet)}</div><div class="sl">Net profit</div></div>
+      <div class="stat-card"><div class="sv">${filtered.length}</div><div class="sl">Slots</div></div>
+      <div class="stat-card"><div class="sv">${fmtGBP(avgHr)}</div><div class="sl">Avg/hour</div></div>
+      <div class="stat-card"><div class="sv r">−${fmtGBP(totMil)}</div><div class="sl">Mileage</div></div>
+      <div class="stat-card"><div class="sv r">−${fmtGBP(totHr)}</div><div class="sl">H&R ins.</div></div>
+    </div>
+
+    ${bestSlot ? `<div class="info-box"><strong>Best slot:</strong> ${dayLbl(bestSlot.date)} ${bestSlot.start_time||''}–${bestSlot.end_time||''} → ${fmtGBP(calcSlot(bestSlot).net)} net &nbsp;|&nbsp; <strong>Worst:</strong> ${dayLbl(worstSlot.date)} ${worstSlot.start_time||''}–${worstSlot.end_time||''} → ${fmtGBP(calcSlot(worstSlot).net)} net</div>` : ''}
+
+    ${weeks.length > 0 ? `
+    <div class="chart-wrap">
+      <div class="chart-title">Net profit by week</div>
+      <div class="bar-chart">${chartBars}</div>
+    </div>` : ''}
+
+    <div class="chart-wrap">
+      <div class="chart-title">Average net profit by day of week</div>
+      <div class="day-grid">${dayCells}</div>
+    </div>
+
+    <div class="pl-group" style="margin-bottom:14px">
+      <div class="pl-row tot"><span>Gross income</span><span class="pos">${fmtGBP(totInc)}</span></div>
+      <div class="pl-row"><span class="sl">Mileage allowance</span><span class="neg">−${fmtGBP(totMil)}</span></div>
+      <div class="pl-row"><span class="sl">H&R insurance</span><span class="neg">−${fmtGBP(totHr)}</span></div>
+      ${totOth>0?'<div class="pl-row"><span class="sl">Slot expenses</span><span class="neg">−'+fmtGBP(totOth)+'</span></div>':''}
+      ${totExp>0?'<div class="pl-row"><span class="sl">Other expenses (fuel etc)</span><span class="neg">−'+fmtGBP(totExp)+'</span></div>':''}
+      <div class="pl-row tot"><span>Net profit</span><span style="color:${totNet>=0?'var(--green)':'var(--red)'};">${fmtGBP(totNet)}</span></div>
+    </div>
+
+    ${filtered.length > 0 ? `
+    <div class="sh"><h2>Slot breakdown (${filtered.length})</h2></div>
+    <div class="slot-table">
+      <div class="slot-table-hdr">
+        ${sortBtn('date','Date')}${sortBtn('gross','Gross')}${sortBtn('net','Net')}${sortBtn('hourly','£/hr')}
+      </div>
+      ${tableRows}
+    </div>` : '<div class="empty"><div class="ee">📊</div><h3>No slots in range</h3><p>Adjust the date range or filters above.</p></div>'}
+
+    <div class="sh"><h2>Export</h2></div>
+    <div class="export-grid">
+      <div class="export-btn" onclick="exportCSV()"><div class="ei">📄</div><div class="el">CSV export</div></div>
+      <div class="export-btn" onclick="window.print()"><div class="ei">🖨</div><div class="el">Print / PDF</div></div>
+    </div>
+  `;
+}
+
+function setRptSort(col) {
+  if (rptSort===col) rptSortDir *= -1;
+  else { rptSort=col; rptSortDir=-1; }
+  renderReports();
+}
+
+function setRptDay(d) { rptDayFilter=d; renderReports(); }
+
+function setRptPreset(p) {
+  const now = new Date();
+  if (p==='week') {
+    const mon = new Date(now); mon.setDate(now.getDate()-now.getDay()+1);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    rptFrom=mon.toISOString().slice(0,10); rptTo=sun.toISOString().slice(0,10);
+  } else if (p==='month') {
+    rptFrom=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
+    const last=new Date(now.getFullYear(),now.getMonth()+1,0);
+    rptTo=last.toISOString().slice(0,10);
+  } else if (p==='ty') {
+    const ty=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;
+    rptFrom=ty+'-04-06'; rptTo=(ty+1)+'-04-05';
+  } else {
+    rptFrom='2020-01-01'; rptTo=now.toISOString().slice(0,10);
+  }
+  renderReports();
 }
 
 // ── CSV Export ────────────────────────────────────────────────────────────────
