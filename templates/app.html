@@ -838,27 +838,26 @@ async function deleteReturn(){
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
+  const months = getMonths();
+  if (!months.includes(curMon)) curMon = months[0] || curMon;
+  const pb = document.getElementById('period-btn');
+  if (pb) pb.textContent = monLbl(curMon);
+  const fns = {
+    dashboard: renderDash,
+    slots: renderSlots,
+    expenses: renderExp,
+    returns: renderRet,
+    tax: renderTax,
+    reports: renderReports
+  };
+  const fn = fns[activeTab];
+  if (!fn) return;
   try {
-    const months=getMonths();
-    if(!months.includes(curMon))curMon=months[0]||curMon;
-    const pb=document.getElementById('period-btn');
-    if(pb) pb.textContent=monLbl(curMon);
-    if(activeTab==='dashboard') renderDash();
-    else if(activeTab==='slots')     renderSlots();
-    else if(activeTab==='expenses')  renderExp();
-    else if(activeTab==='returns')   renderRet();
-    else if(activeTab==='tax')       renderTax();
-    else if(activeTab==='reports') {
-      try { renderReports(); }
-      catch(e) {
-        const el=document.getElementById('reports-content');
-        if(el) el.innerHTML='<div style="padding:20px;background:#fee;border-radius:10px;margin:10px;"><strong style="color:red">Reports error:</strong><br><pre style="font-size:11px;white-space:pre-wrap">'+e.stack+'</pre></div>';
-      }
-    }
+    fn();
   } catch(e) {
-    console.error('Render error:', e);
-    const dc = document.getElementById('dash-content');
-    if (dc && activeTab==='dashboard') dc.innerHTML='<div style="padding:20px;color:red;font-size:13px;"><strong>Error:</strong> '+e.message+'</div>';
+    console.error('Render error in ' + activeTab + ':', e);
+    const el = document.getElementById(activeTab === 'dashboard' ? 'dash-content' : activeTab + '-content');
+    if (el) el.innerHTML = '<div style="padding:20px;color:red;font-size:12px;background:#fee2e2;border-radius:8px;margin:8px"><strong>' + activeTab + ' error:</strong><br>' + e.message + '<br><pre style="font-size:10px;margin-top:8px">' + (e.stack||'').slice(0,500) + '</pre></div>';
   }
 }
 
