@@ -1041,7 +1041,7 @@ function renderReports() {
   const dayChips = ['All',...dayNames].map((d,i) => {
     const val = i===0 ? '' : String(i-1);
     const active = rptDayFilter===val ? ' active' : '';
-    return '<button class="fchip'+active+'" onclick="setRptDay(''+val+'')">'+d+'</button>';
+    return '<button class="fchip'+active+'" onclick="setRptDay(\"'+val+'\")">'+d+'</button>';
   }).join('');
 
   el.innerHTML = `
