@@ -743,7 +743,14 @@ async function saveSlot() {
       });}
     curMon=date.slice(0,7);
     closeModal('slot-modal');
-    render();
+    try {
+      render();
+    } catch(re) {
+      console.error('render after save crashed:', re);
+      alert('Slot saved! But display error: ' + re.message);
+      // Force reload to show saved data
+      setTimeout(function(){ location.reload(); }, 100);
+    }
   } catch(e){console.error('saveSlot error:',e);alert('Save error: '+e.message+' ('+e.constructor.name+')');}
   btn.textContent='Save slot'; btn.disabled=false;
 }
