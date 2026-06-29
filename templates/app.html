@@ -452,16 +452,23 @@ function calcReturn(r) {
 function fmtGBP(n) { return (n<0?'−':'')+'£'+Math.abs(n).toFixed(2); }
 function fmtMi(n)  { return (+n||0).toFixed(0)+' mi'; }
 function dayLbl(d) {
-  const dt = new Date(d+'T00:00:00');
+  if (!d) return '';
+  // Handle both '2026-06-14' and '2026-06-14T00:00:00' formats
+  const dateStr = String(d).slice(0,10);
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]+' '+dt.getDate()+' '+
     ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()];
 }
 function monLbl(m) {
-  const [y,mo]=m.split('-');
-  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1]+' '+y;
+  if (!m) return '';
+  const parts = String(m).slice(0,7).split('-');
+  if (parts.length < 2) return m;
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+parts[1]-1]+' '+parts[0];
 }
 function tyLbl(y) { return y+'–'+String(y+1).slice(2); }
-function slotMon(s) { return s.date?s.date.slice(0,7):''; }
+function slotMon(s) { return s.date?String(s.date).slice(0,7):''; }
 
 // ── State & Data ──────────────────────────────────────────────────────────────
 let token = localStorage.getItem('ft_token') || '';
