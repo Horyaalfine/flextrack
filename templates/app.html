@@ -207,6 +207,50 @@ button{cursor:pointer;}
 /* Trial banner */
 .trial-bar{background:var(--amber-bg);border-bottom:1px solid var(--amber-bd);padding:8px 18px;font-size:12px;color:var(--amber);text-align:center;}
 
+/* Filters */
+.filter-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:14px;}
+.filter-bar label{font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;}
+.filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.filter-row input,.filter-row select{flex:1;min-width:100px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.fchip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--muted2);cursor:pointer;}
+.fchip.active{background:var(--accent-bg);border-color:var(--accent-bd);color:var(--accent);font-weight:600;}
+/* Chart */
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:14px;}
+.chart-title{font-size:12px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:140px;padding-bottom:24px;position:relative;}
+.bar-chart::after{content:'';position:absolute;bottom:24px;left:0;right:0;height:1px;background:var(--border);}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;}
+.bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;transition:height 0.3s;}
+.bar.pos{background:var(--green);}
+.bar.neg{background:var(--red);}
+.bar-lbl{font-size:9px;color:var(--muted);position:absolute;bottom:-20px;white-space:nowrap;}
+.bar-val{font-size:9px;color:var(--muted);position:absolute;top:-16px;white-space:nowrap;}
+/* Stats grid */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:11px 12px;text-align:center;}
+.stat-card .sv{font-size:17px;font-weight:700;letter-spacing:-.5px;}
+.stat-card .sv.g{color:var(--green);}
+.stat-card .sv.r{color:var(--red);}
+.stat-card .sv.a{color:var(--accent);}
+.stat-card .sl{font-size:10px;color:var(--muted);margin-top:2px;}
+/* Sortable table */
+.slot-table{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:14px;}
+.slot-table-hdr{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0;background:var(--bg3);border-bottom:1px solid var(--border);}
+.slot-table-hdr button{padding:9px 10px;font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;background:none;border:none;border-right:1px solid var(--border);text-align:left;cursor:pointer;}
+.slot-table-hdr button:last-child{border-right:none;}
+.slot-table-hdr button.sort-active{color:var(--accent);}
+.slot-table-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;border-bottom:1px solid var(--border);cursor:pointer;}
+.slot-table-row:last-child{border-bottom:none;}
+.slot-table-row:active{background:var(--bg3);}
+.slot-table-row div{padding:9px 10px;font-size:13px;border-right:1px solid var(--border);}
+.slot-table-row div:last-child{border-right:none;}
+/* Day analysis */
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px;}
+.day-cell{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 4px;text-align:center;}
+.day-cell .dn{font-size:10px;color:var(--muted);margin-bottom:4px;}
+.day-cell .dv{font-size:12px;font-weight:700;}
+.day-cell .dc{font-size:10px;color:var(--muted);margin-top:2px;}
 @media(prefers-color-scheme:light){
   :root{--bg:#f2f4f8;--bg2:#fff;--bg3:#eaecf2;--card:#fff;--border:#dde0ea;--text:#111827;--muted:#8b92a8;--muted2:#5c6480;}
 }
@@ -293,6 +337,10 @@ button{cursor:pointer;}
       <button class="nav-btn" id="nav-tax" onclick="switchTab('tax')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg>
         Tax/UC
+      </button>
+      <button class="nav-btn" id="nav-reports" onclick="switchTab('reports')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Reports
       </button>
     </nav>
   </div>
