@@ -465,8 +465,12 @@ function calcUcMil(miles) {
 }
 function slotTY(date) {
   if (!date) return 2025;
-  const d = new Date(date + 'T00:00:00');
-  return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  const dateStr = String(date).slice(0,10);
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return 2025;
+  const month = parseInt(parts[1]) - 1; // 0-indexed
+  const year = parseInt(parts[0]);
+  return month >= 3 ? year : year - 1;
 }
 function timeDiff(a, b) {
   if (!a || !b) return 0;
