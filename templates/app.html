@@ -744,7 +744,7 @@ async function saveSlot() {
     curMon=date.slice(0,7);
     closeModal('slot-modal');
     render();
-  } catch(e){alert('Error: '+e.message);}
+  } catch(e){console.error('saveSlot error:',e);alert('Save error: '+e.message+' ('+e.constructor.name+')');}
   btn.textContent='Save slot'; btn.disabled=false;
 }
 
@@ -856,6 +856,8 @@ function render() {
     fn();
   } catch(e) {
     console.error('Render error in ' + activeTab + ':', e);
+    const dashEl = document.getElementById('dash-content');
+    if(dashEl && !dashEl.innerHTML.includes('error-box')) dashEl.innerHTML='<div style="padding:20px;color:red;background:#fee2e2;border-radius:8px;margin:8px"><strong>'+activeTab+' error:</strong><br>'+e.message+'</div>'+dashEl.innerHTML;
     const el = document.getElementById(activeTab === 'dashboard' ? 'dash-content' : activeTab + '-content');
     if (el) el.innerHTML = '<div style="padding:20px;color:red;font-size:12px;background:#fee2e2;border-radius:8px;margin:8px"><strong>' + activeTab + ' error:</strong><br>' + e.message + '<br><pre style="font-size:10px;margin-top:8px">' + (e.stack||'').slice(0,500) + '</pre></div>';
   }
