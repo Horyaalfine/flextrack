@@ -732,8 +732,18 @@ async function saveSlot() {
   const body={date,start:document.getElementById('s-start').value,end:document.getElementById('s-end').value,actual_end:document.getElementById('s-aend').value,gross:+gross||0,tips:+document.getElementById('s-tips').value||0,timecomp:+document.getElementById('s-tc').value||0,pkgs:+document.getElementById('s-pkgs').value||0,odo_start:+document.getElementById('s-os').value||0,odo_end:+document.getElementById('s-oe').value||0,other:+document.getElementById('s-other').value||0,notes:document.getElementById('s-notes').value.trim()};
   try {
     if(editSlotId){await api('PUT','/api/slots/'+editSlotId,body);const i=slots.findIndex(x=>x.id===editSlotId);if(i>=0)slots[i]={...slots[i],...body,start_time:body.start,end_time:body.end,other_expenses:body.other,packages:body.pkgs};}
-    else{const r=await api('POST','/api/slots',body);slots.unshift({...r,start_time:r.start_time,end_time:r.end_time});}
-    curMon=date.slice(0,7);closeModal('slot-modal');render();
+    else{const r=await api('POST','/api/slots',body);slots.unshift({
+        ...r,
+        start: r.start_time||'', end: r.end_time||'',
+        actual_end: r.actual_end||'',
+        other: +(r.other_expenses||0), pkgs: +(r.packages||0),
+        gross: +(r.gross||0), tips: +(r.tips||0),
+        timecomp: +(r.timecomp||0),
+        odo_start: +(r.odo_start||0), odo_end: +(r.odo_end||0)
+      });}
+    curMon=date.slice(0,7);
+    closeModal('slot-modal');
+    render();
   } catch(e){alert('Error: '+e.message);}
   btn.textContent='Save slot'; btn.disabled=false;
 }
@@ -859,7 +869,7 @@ function renderDash() {
   const el=document.getElementById('dash-content');
   const ms=slots.filter(s=>slotMon(s)===curMon);
   const mc=ms.map(calcSlot);
-  const me=expenses.filter(e=>e.date?.slice(0,7)===curMon);
+  const me=expenses.filter(e=>{ if(!e.date) return false; const m=String(e.date).match(/^(\d{4}-\d{2})/); return m&&m[1]===curMon; });
   const totG=mc.reduce((a,c)=>a+c.income,0),totN=mc.reduce((a,c)=>a+c.net,0);
   const totMi=mc.reduce((a,c)=>a+c.miles,0),totExp=me.reduce((a,e)=>a+e.amount,0);
   const pendRet=returns_.filter(r=>r.status==='pending').length;
