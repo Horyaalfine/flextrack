@@ -359,7 +359,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- SLOT MODAL -->
 <div class="modal-bg" id="slot-modal" style="display:none" onclick="closeBg(event,'slot-modal')">
 <div class="modal">
-  <div class="modal-hdr"><h2 id="slot-modal-title">Log slot</h2><button class="modal-close" onclick="closeModal('slot-modal')">✕</button></div>
+  <div class="modal-hdr"><h2 id="slot-modal-title">Log slot</h2><div style="display:flex;gap:10px;align-items:center"><button id="slot-del-top" onclick="deleteSlot()" style="display:none;background:none;border:none;color:#ff5c6a;font-size:13px;font-weight:600;">Delete</button><button class="modal-close" onclick="closeModal('slot-modal')">✕</button></div></div>
   <div class="step-dots"><div class="step-dot active" id="sdot1"></div><div class="step-dot" id="sdot2"></div></div>
   <div id="slot-s1">
     <div class="fg-m"><label>Date</label><input type="date" id="s-date"/></div>
