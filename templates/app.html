@@ -364,11 +364,13 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="step-dots"><div class="step-dot active" id="sdot1"></div><div class="step-dot" id="sdot2"></div></div>
   <div id="slot-s1">
     <div class="fg-m"><label>Date</label><input type="date" id="s-date"/></div>
-    <div class="fg-m" style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:11px 13px;display:flex;align-items:center;gap:10px;">
-      <input type="checkbox" id="s-cancelled" onchange="toggleCancelled()" style="width:18px;height:18px;flex-shrink:0;"/>
-      <label style="margin:0;text-transform:none;font-size:13px;font-weight:500;color:var(--text);cursor:pointer" for="s-cancelled">Cancelled by Amazon — paid in full, no journey made</label>
+    <input type="checkbox" id="s-cancelled" onchange="toggleCancelled()" style="display:none"/>
+    <div class="report-toggle" style="margin-bottom:14px">
+      <button type="button" class="rt-btn active" id="s-worked-btn" onclick="setSlotType(false)">🚗 Worked it</button>
+      <button type="button" class="rt-btn" id="s-paidcx-btn" onclick="setSlotType(true)">💷 Paid CX</button>
     </div>
-    <div class="fg-grid">
+    <div id="s-paidcx-note" style="display:none" class="info-box">Amazon cancelled and paid in full — no mileage, no H&R insurance, no journey logged.</div>
+    <div class="fg-grid" id="s-startend-grid">
       <div class="fg-m"><label>Slot start</label><input type="time" id="s-start"/></div>
       <div class="fg-m"><label>Slot end (allocated)</label><input type="time" id="s-end"/></div>
     </div>
@@ -710,18 +712,24 @@ function openSlotModal(id) {
   slotStep(1); openModal('slot-modal'); updateOdoPrev(); updateSlotPrev(); toggleCancelled();
 }
 
-function toggleCancelled() {
-  const cancelled = document.getElementById('s-cancelled').checked;
+function setSlotType(cancelled) {
+  document.getElementById('s-cancelled').checked = cancelled;
+  document.getElementById('s-worked-btn').classList.toggle('active', !cancelled);
+  document.getElementById('s-paidcx-btn').classList.toggle('active', cancelled);
+  document.getElementById('s-paidcx-note').style.display = cancelled ? 'block' : 'none';
   const aendWrap = document.getElementById('s-aend-wrap');
   const tcWrap = document.getElementById('s-tc-wrap');
+  const startEndGrid = document.getElementById('s-startend-grid');
   if (aendWrap) aendWrap.style.display = cancelled ? 'none' : 'block';
   if (tcWrap) tcWrap.style.display = cancelled ? 'none' : 'block';
+  if (startEndGrid) startEndGrid.style.display = cancelled ? 'none' : 'grid';
   if (cancelled) {
     document.getElementById('s-tips').value = '';
     document.getElementById('s-pkgs').value = '';
   }
   updateSlotPrev();
 }
+function toggleCancelled() { setSlotType(document.getElementById('s-cancelled').checked); }
 
 function slotNext() {
   if (!document.getElementById('s-date').value||!document.getElementById('s-gross').value) { alert('Date and gross pay required.'); return; }
