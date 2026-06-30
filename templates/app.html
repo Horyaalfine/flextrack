@@ -494,18 +494,19 @@ function timeDiff(a, b) {
   return m > 0 ? +(m/60).toFixed(4) : 0;
 }
 function calcSlot(s) {
+  const cancelled = !!s.cancelled;
   const gross = +s.gross||0, tips = +s.tips||0, tc = +s.timecomp||0, other = +s.other_expenses||0;
-  const os = +s.odo_start||0, oe = +s.odo_end||0;
-  const miles = oe > os ? oe - os : 0;
+  const os = cancelled ? 0 : +s.odo_start||0, oe = cancelled ? 0 : +s.odo_end||0;
+  const miles = cancelled ? 0 : (oe > os ? oe - os : 0);
   const income = gross + tips + tc;
   const ty = slotTY(s.date);
-  const milAllow = calcHmrcMil(miles, ty);
+  const milAllow = cancelled ? 0 : calcHmrcMil(miles, ty);
   const slotH = timeDiff(s.start_time, s.end_time);
-  const actH = timeDiff(s.start_time, s.actual_end || s.end_time);
-  const hrIns = +(actH * HR_RATE).toFixed(2);
+  const actH = cancelled ? 0 : timeDiff(s.start_time, s.actual_end || s.end_time);
+  const hrIns = cancelled ? 0 : +(actH * HR_RATE).toFixed(2);
   const net = +(income - milAllow - hrIns - other).toFixed(2);
   const hourly = slotH > 0 ? +(net / slotH).toFixed(2) : 0;
-  return { gross, tips, tc, other, miles, income, milAllow, slotH, actH, hrIns, net, hourly, ty,
+  return { gross, tips, tc, other, miles, income, milAllow, slotH, actH, hrIns, net, hourly, ty, cancelled,
            earlyFinish: s.actual_end && s.actual_end < s.end_time,
            lateFinish:  s.actual_end && s.actual_end > s.end_time };
 }
