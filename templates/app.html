@@ -372,10 +372,10 @@ window.onerror = function(msg, src, line, col, err) {
       <div class="fg-m"><label>Slot start</label><input type="time" id="s-start"/></div>
       <div class="fg-m"><label>Slot end (allocated)</label><input type="time" id="s-end"/></div>
     </div>
-    <div class="fg-m"><label>Actual finish <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(if different — for H&R calc)</span></label><input type="time" id="s-aend"/><div class="hint">Leave blank if finished on time.</div></div>
-    <div class="fg-grid">
+    <div class="fg-m" id="s-aend-wrap"><label>Actual finish <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(if different — for H&R calc)</span></label><input type="time" id="s-aend"/><div class="hint">Leave blank if finished on time.</div></div>
+    <div class="fg-grid" id="s-gross-grid">
       <div class="fg-m"><label>Gross pay (£)</label><input type="number" id="s-gross" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
-      <div class="fg-m"><label>Time comp (£)</label><input type="number" id="s-tc" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
+      <div class="fg-m" id="s-tc-wrap"><label>Time comp (£)</label><input type="number" id="s-tc" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
     </div>
     <div class="fg-grid">
       <div class="fg-m"><label>Tips (£)</label><input type="number" id="s-tips" min="0" step="0.01" placeholder="0.00" inputmode="decimal"/></div>
@@ -712,8 +712,10 @@ function openSlotModal(id) {
 
 function toggleCancelled() {
   const cancelled = document.getElementById('s-cancelled').checked;
-  document.getElementById('s-aend').closest('.fg-m').style.display = cancelled ? 'none' : 'block';
-  document.querySelector('#slot-s1 .fg-grid:nth-of-type(2)').style.display = cancelled ? 'none' : 'grid';
+  const aendWrap = document.getElementById('s-aend-wrap');
+  const tcWrap = document.getElementById('s-tc-wrap');
+  if (aendWrap) aendWrap.style.display = cancelled ? 'none' : 'block';
+  if (tcWrap) tcWrap.style.display = cancelled ? 'none' : 'block';
   if (cancelled) {
     document.getElementById('s-tips').value = '';
     document.getElementById('s-pkgs').value = '';
