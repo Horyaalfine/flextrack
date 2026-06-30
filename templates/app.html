@@ -670,6 +670,7 @@ function openSlotModal(id) {
   const s=id?slots.find(x=>x.id===id):null;
   document.getElementById('slot-modal-title').textContent=id?'Edit slot':'Log slot';
   document.getElementById('slot-del-btn').style.display=id?'inline-flex':'none';
+  document.getElementById('slot-del-top').style.display=id?'inline-block':'none';
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('s-date').value   = s?.date||today;
   document.getElementById('s-start').value  = s?.start_time||'09:00';
