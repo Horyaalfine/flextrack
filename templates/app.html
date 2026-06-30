@@ -257,6 +257,15 @@ button{cursor:pointer;}
 </style>
 </head>
 <body>
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff5c6a;color:#fff;padding:12px;font-size:12px;z-index:99999;font-family:monospace;white-space:pre-wrap;max-height:50vh;overflow:auto;';
+  box.textContent = 'JS ERROR: ' + msg + ' at line ' + line + ':' + col;
+  document.body.prepend(box);
+  return false;
+};
+</script>
 <div id="app">
 
   <!-- AUTH SCREENS -->
