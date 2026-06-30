@@ -364,6 +364,10 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="step-dots"><div class="step-dot active" id="sdot1"></div><div class="step-dot" id="sdot2"></div></div>
   <div id="slot-s1">
     <div class="fg-m"><label>Date</label><input type="date" id="s-date"/></div>
+    <div class="fg-m" style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:11px 13px;display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="s-cancelled" onchange="toggleCancelled()" style="width:18px;height:18px;flex-shrink:0;"/>
+      <label style="margin:0;text-transform:none;font-size:13px;font-weight:500;color:var(--text);cursor:pointer" for="s-cancelled">Cancelled by Amazon — paid in full, no journey made</label>
+    </div>
     <div class="fg-grid">
       <div class="fg-m"><label>Slot start</label><input type="time" id="s-start"/></div>
       <div class="fg-m"><label>Slot end (allocated)</label><input type="time" id="s-end"/></div>
