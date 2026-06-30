@@ -873,7 +873,15 @@ function render() {
     reports: renderReports
   };
   const fn = fns[activeTab];
-  alert('DEBUG: activeTab=' + activeTab + ' fn=' + typeof fn);
+  console.log('DEBUG render() called: activeTab=' + activeTab + ' fn=' + typeof fn);
+  var dbg = document.getElementById('debug-banner');
+  if (!dbg) {
+    dbg = document.createElement('div');
+    dbg.id = 'debug-banner';
+    dbg.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#34c984;color:#000;padding:8px;font-size:12px;z-index:99998;font-family:monospace;';
+    document.body.prepend(dbg);
+  }
+  dbg.textContent = 'DEBUG: activeTab=' + activeTab + ' fn=' + typeof fn + ' time=' + new Date().toLocaleTimeString();
   if (!fn) return;
   try {
     fn();
