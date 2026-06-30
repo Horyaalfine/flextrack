@@ -325,8 +325,8 @@ window.onerror = function(msg, src, line, col, err) {
       <div class="tab-content" id="tab-tax">
         <div id="tax-year-row" class="month-row"></div>
         <div id="tax-content"></div>
-    <div class="tab-content" id="tab-reports"><div id="reports-content"></div></div>
       </div>
+      <div class="tab-content" id="tab-reports"><div id="reports-content"></div></div>
     </div>
     <nav class="bottom-nav">
       <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
@@ -873,15 +873,6 @@ function render() {
     reports: renderReports
   };
   const fn = fns[activeTab];
-  console.log('DEBUG render() called: activeTab=' + activeTab + ' fn=' + typeof fn);
-  var dbg = document.getElementById('debug-banner');
-  if (!dbg) {
-    dbg = document.createElement('div');
-    dbg.id = 'debug-banner';
-    dbg.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#34c984;color:#000;padding:8px;font-size:12px;z-index:99998;font-family:monospace;';
-    document.body.prepend(dbg);
-  }
-  dbg.textContent = 'DEBUG: activeTab=' + activeTab + ' fn=' + typeof fn + ' time=' + new Date().toLocaleTimeString();
   if (!fn) return;
   try {
     fn();
@@ -1021,7 +1012,6 @@ function renderUC(el,toggle){
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 function renderReports() {
-  document.getElementById('reports-content').innerHTML = '<div style="padding:30px;background:lime;color:black;font-weight:bold;font-size:16px">RENDERREPORTS WAS CALLED - if you see this only, error is below</div>';
   const el = document.getElementById('reports-content');
   if (!el) return;
   const now = new Date();
