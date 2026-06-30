@@ -699,7 +699,8 @@ function openSlotModal(id) {
   document.getElementById('s-oe').value     = s?.odo_end||'';
   document.getElementById('s-other').value  = s?.other_expenses||'';
   document.getElementById('s-notes').value  = s?.notes||'';
-  slotStep(1); openModal('slot-modal'); updateOdoPrev(); updateSlotPrev();
+  document.getElementById('s-cancelled').checked = !!s?.cancelled;
+  slotStep(1); openModal('slot-modal'); updateOdoPrev(); updateSlotPrev(); toggleCancelled();
 }
 
 function toggleCancelled() {
