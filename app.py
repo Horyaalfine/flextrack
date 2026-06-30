@@ -244,14 +244,16 @@ def get_slots():
 @token_required
 def add_slot():
     d = request.json
+    cancelled = bool(d.get('cancelled', False))
     query("""INSERT INTO ft_slots
              (user_id, date, start_time, end_time, actual_end, gross, tips, timecomp,
-              odo_start, odo_end, other_expenses, packages, notes)
-             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+              odo_start, odo_end, other_expenses, packages, notes, cancelled)
+             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
           (g.user_id, d['date'], d.get('start',''), d.get('end',''), d.get('actual_end',''),
            d.get('gross',0), d.get('tips',0), d.get('timecomp',0),
-           d.get('odo_start',0), d.get('odo_end',0), d.get('other',0),
-           d.get('pkgs',0), d.get('notes','')), commit=True)
+           d.get('odo_start',0) if not cancelled else 0,
+           d.get('odo_end',0) if not cancelled else 0,
+           d.get('other',0), d.get('pkgs',0), d.get('notes',''), cancelled), commit=True)
     row = query('SELECT * FROM ft_slots WHERE user_id=%s ORDER BY id DESC LIMIT 1', (g.user_id,), one=True)
     return jsonify(dict(row)), 201
 
@@ -259,14 +261,17 @@ def add_slot():
 @token_required
 def update_slot(slot_id):
     d = request.json
+    cancelled = bool(d.get('cancelled', False))
     query("""UPDATE ft_slots SET date=%s, start_time=%s, end_time=%s, actual_end=%s,
              gross=%s, tips=%s, timecomp=%s, odo_start=%s, odo_end=%s,
-             other_expenses=%s, packages=%s, notes=%s
+             other_expenses=%s, packages=%s, notes=%s, cancelled=%s
              WHERE id=%s AND user_id=%s""",
           (d['date'], d.get('start',''), d.get('end',''), d.get('actual_end',''),
            d.get('gross',0), d.get('tips',0), d.get('timecomp',0),
-           d.get('odo_start',0), d.get('odo_end',0), d.get('other',0),
-           d.get('pkgs',0), d.get('notes',''), slot_id, g.user_id), commit=True)
+           d.get('odo_start',0) if not cancelled else 0,
+           d.get('odo_end',0) if not cancelled else 0,
+           d.get('other',0), d.get('pkgs',0), d.get('notes',''), cancelled,
+           slot_id, g.user_id), commit=True)
     return jsonify({'ok': True})
 
 @app.route('/api/slots/<int:slot_id>', methods=['DELETE'])
