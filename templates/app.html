@@ -420,6 +420,12 @@ window.onerror = function(msg, src, line, col, err) {
       <option value="fuel">⛽ Fuel</option>
       <option value="parking">🅿️ Parking / Toll</option>
       <option value="phone">📱 Phone</option>
+      <option value="roadtax">🚗 Road tax</option>
+      <option value="mot">🔧 MOT</option>
+      <option value="insurance">🛡 Insurance</option>
+      <option value="tyres">⚙️ Tyres</option>
+      <option value="carwash">🧼 Car wash</option>
+      <option value="penalty">⚠️ Penalty / fine</option>
       <option value="other">📦 Other</option>
     </select>
   </div>
@@ -945,8 +951,9 @@ function renderSlots(){
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
-const CATI={fuel:'⛽',parking:'🅿️',phone:'📱',other:'📦'};
-const CATL={fuel:'Fuel',parking:'Parking/Toll',phone:'Phone',other:'Other'};
+const CATI={fuel:'⛽',parking:'🅿️',phone:'📱',roadtax:'🚗',mot:'🔧',insurance:'🛡',tyres:'⚙️',carwash:'🧼',penalty:'⚠️',other:'📦'};
+const CATL={fuel:'Fuel',parking:'Parking/Toll',phone:'Phone',roadtax:'Road tax',mot:'MOT',insurance:'Insurance',tyres:'Tyres',carwash:'Car wash',penalty:'Penalty/fine',other:'Other'};
+const CAT_DEDUCTIBLE={fuel:false,parking:true,phone:false,roadtax:false,mot:false,insurance:false,tyres:false,carwash:false,penalty:false,other:true};
 function renderExp(){
   const months=getMonths();
   document.getElementById('exp-month-row').innerHTML=months.map(m=>'<button class="month-chip '+(m===curMon?'active':'')+'" onclick="setMon(\''+m+'\')">'+monLbl(m)+'</button>').join('');
