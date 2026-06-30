@@ -1011,6 +1011,7 @@ function renderUC(el,toggle){
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 function renderReports() {
+  document.getElementById('reports-content').innerHTML = '<div style="padding:30px;background:lime;color:black;font-weight:bold;font-size:16px">RENDERREPORTS WAS CALLED - if you see this only, error is below</div>';
   const el = document.getElementById('reports-content');
   if (!el) return;
   const now = new Date();
