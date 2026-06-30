@@ -730,9 +730,10 @@ async function saveSlot() {
   if(!date||!gross){alert('Date and gross pay required.');return;}
   const btn=document.getElementById('slot-save-btn'); btn.textContent='Saving…'; btn.disabled=true;
   const body={date,start:document.getElementById('s-start').value,end:document.getElementById('s-end').value,actual_end:document.getElementById('s-aend').value,gross:+gross||0,tips:+document.getElementById('s-tips').value||0,timecomp:+document.getElementById('s-tc').value||0,pkgs:+document.getElementById('s-pkgs').value||0,odo_start:+document.getElementById('s-os').value||0,odo_end:+document.getElementById('s-oe').value||0,other:+document.getElementById('s-other').value||0,notes:document.getElementById('s-notes').value.trim()};
+  console.log('STEP1: body built', body, 'editSlotId=', editSlotId);
   try {
     if(editSlotId){await api('PUT','/api/slots/'+editSlotId,body);const i=slots.findIndex(x=>x.id===editSlotId);if(i>=0)slots[i]={...slots[i],...body,start_time:body.start,end_time:body.end,other_expenses:body.other,packages:body.pkgs};}
-    else{const r=await api('POST','/api/slots',body);slots.unshift({
+    else{const r=await api('POST','/api/slots',body);console.log('STEP2: API returned', r);slots.unshift({
         ...r,
         start: r.start_time||'', end: r.end_time||'',
         actual_end: r.actual_end||'',
@@ -741,10 +742,13 @@ async function saveSlot() {
         timecomp: +(r.timecomp||0),
         odo_start: +(r.odo_start||0), odo_end: +(r.odo_end||0)
       });}
+    console.log('STEP3: slots array now', slots.length, 'items');
     curMon=date.slice(0,7);
     closeModal('slot-modal');
+    console.log('STEP4: about to call render()');
     try {
       render();
+      console.log('STEP5: render() completed OK');
     } catch(re) {
       console.error('render after save crashed:', re);
       alert('Slot saved! But display error: ' + re.message);
