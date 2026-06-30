@@ -10,7 +10,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import datetime as _dt
+from flask.json.provider import DefaultJSONProvider
+
+class ISOJSONProvider(DefaultJSONProvider):
+    def default(self, o):
+        if isinstance(o, _dt.date) and not isinstance(o, _dt.datetime):
+            return o.isoformat()
+        if isinstance(o, _dt.datetime):
+            return o.isoformat()
+        return super().default(o)
+
 app = Flask(__name__)
+app.json = ISOJSONProvider(app)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-production')
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
