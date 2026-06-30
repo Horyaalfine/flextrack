@@ -650,7 +650,7 @@ function getTYs() {
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 let activeTab='dashboard';
-let rptFrom='', rptTo='', rptSort='date', rptSortDir=-1, rptDayFilter='';
+let rptFrom='', rptTo='', rptSort='date', rptSortDir=-1, rptDay='';
 function switchTab(t) {
   document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
@@ -1029,10 +1029,10 @@ function renderReports() {
   });
 
   // Day of week filter
-  if (rptDayFilter !== '') {
+  if (rptDay !== '') {
     filtered = filtered.filter(s => {
       const d = new Date(String(s.date).slice(0,10)+'T00:00:00');
-      return d.getDay() === parseInt(rptDayFilter);
+      return d.getDay() === parseInt(rptDay);
     });
   }
 
@@ -1113,7 +1113,7 @@ function renderReports() {
   // Day filter chips
   const dayChips = ['All',...dayNames].map((d,i) => {
     const val = i===0 ? '' : String(i-1);
-    const active = rptDayFilter===val ? ' active' : '';
+    const active = rptDay===val ? ' active' : '';
     return '<button class="fchip'+active+'" onclick="setRptDay(\"'+val+'\")">'+d+'</button>';
   }).join('');
 
@@ -1188,7 +1188,7 @@ function setRptSort(col) {
   renderReports();
 }
 
-function setRptDay(d) { rptDayFilter=d; renderReports(); }
+function setRptDay(d) { rptDay=d; renderReports(); }
 
 function setRptPreset(p) {
   const now = new Date();
