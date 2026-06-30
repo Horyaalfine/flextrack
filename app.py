@@ -107,8 +107,12 @@ def init_db():
             other_expenses NUMERIC(10,2) DEFAULT 0,
             packages INTEGER DEFAULT 0,
             notes TEXT DEFAULT '',
+            cancelled BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT NOW()
         )
+    """)
+    cur.execute("""
+        ALTER TABLE ft_slots ADD COLUMN IF NOT EXISTS cancelled BOOLEAN DEFAULT FALSE
     """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ft_expenses (
