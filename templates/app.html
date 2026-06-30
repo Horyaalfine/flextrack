@@ -702,8 +702,20 @@ function openSlotModal(id) {
   slotStep(1); openModal('slot-modal'); updateOdoPrev(); updateSlotPrev();
 }
 
+function toggleCancelled() {
+  const cancelled = document.getElementById('s-cancelled').checked;
+  document.getElementById('s-aend').closest('.fg-m').style.display = cancelled ? 'none' : 'block';
+  document.querySelector('#slot-s1 .fg-grid:nth-of-type(2)').style.display = cancelled ? 'none' : 'grid';
+  if (cancelled) {
+    document.getElementById('s-tips').value = '';
+    document.getElementById('s-pkgs').value = '';
+  }
+  updateSlotPrev();
+}
+
 function slotNext() {
   if (!document.getElementById('s-date').value||!document.getElementById('s-gross').value) { alert('Date and gross pay required.'); return; }
+  if (document.getElementById('s-cancelled').checked) { saveSlot(); return; }
   slotStep(2);
 }
 function slotStep(n) {
@@ -744,35 +756,39 @@ function updateSlotPrev() {
 async function saveSlot() {
   const date=document.getElementById('s-date').value,gross=document.getElementById('s-gross').value;
   if(!date||!gross){alert('Date and gross pay required.');return;}
-  const btn=document.getElementById('slot-save-btn'); btn.textContent='Saving…'; btn.disabled=true;
-  const body={date,start:document.getElementById('s-start').value,end:document.getElementById('s-end').value,actual_end:document.getElementById('s-aend').value,gross:+gross||0,tips:+document.getElementById('s-tips').value||0,timecomp:+document.getElementById('s-tc').value||0,pkgs:+document.getElementById('s-pkgs').value||0,odo_start:+document.getElementById('s-os').value||0,odo_end:+document.getElementById('s-oe').value||0,other:+document.getElementById('s-other').value||0,notes:document.getElementById('s-notes').value.trim()};
-  console.log('STEP1: body built', body, 'editSlotId=', editSlotId);
+  const cancelled = document.getElementById('s-cancelled').checked;
+  const btn=document.getElementById('slot-save-btn'); if(btn){btn.textContent='Saving…'; btn.disabled=true;}
+  const body={date,
+    start:cancelled?'':document.getElementById('s-start').value,
+    end:cancelled?'':document.getElementById('s-end').value,
+    actual_end:cancelled?'':document.getElementById('s-aend').value,
+    gross:+gross||0,
+    tips:cancelled?0:(+document.getElementById('s-tips').value||0),
+    timecomp:+document.getElementById('s-tc').value||0,
+    pkgs:cancelled?0:(+document.getElementById('s-pkgs').value||0),
+    odo_start:cancelled?0:(+document.getElementById('s-os').value||0),
+    odo_end:cancelled?0:(+document.getElementById('s-oe').value||0),
+    other:cancelled?0:(+document.getElementById('s-other').value||0),
+    notes:document.getElementById('s-notes').value.trim(),
+    cancelled:cancelled
+  };
   try {
     if(editSlotId){await api('PUT','/api/slots/'+editSlotId,body);const i=slots.findIndex(x=>x.id===editSlotId);if(i>=0)slots[i]={...slots[i],...body,start_time:body.start,end_time:body.end,other_expenses:body.other,packages:body.pkgs};}
-    else{const r=await api('POST','/api/slots',body);console.log('STEP2: API returned', r);slots.unshift({
+    else{const r=await api('POST','/api/slots',body);slots.unshift({
         ...r,
         start: r.start_time||'', end: r.end_time||'',
         actual_end: r.actual_end||'',
         other: +(r.other_expenses||0), pkgs: +(r.packages||0),
         gross: +(r.gross||0), tips: +(r.tips||0),
         timecomp: +(r.timecomp||0),
-        odo_start: +(r.odo_start||0), odo_end: +(r.odo_end||0)
+        odo_start: +(r.odo_start||0), odo_end: +(r.odo_end||0),
+        cancelled: !!r.cancelled
       });}
-    console.log('STEP3: slots array now', slots.length, 'items');
     curMon=date.slice(0,7);
     closeModal('slot-modal');
-    console.log('STEP4: about to call render()');
-    try {
-      render();
-      console.log('STEP5: render() completed OK');
-    } catch(re) {
-      console.error('render after save crashed:', re);
-      alert('Slot saved! But display error: ' + re.message);
-      // Force reload to show saved data
-      setTimeout(function(){ location.reload(); }, 100);
-    }
-  } catch(e){console.error('saveSlot error:',e);alert('Save error: '+e.message+' ('+e.constructor.name+')');}
-  btn.textContent='Save slot'; btn.disabled=false;
+    try { render(); } catch(re) { console.error('render after save crashed:', re); setTimeout(function(){ location.reload(); }, 100); }
+  } catch(e){console.error('saveSlot error:',e);alert('Save error: '+e.message);}
+  if(btn){btn.textContent='Save slot'; btn.disabled=false;}
 }
 
 async function deleteSlot() {
