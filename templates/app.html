@@ -984,9 +984,10 @@ function renderRet(){
 // ── Tax / UC ──────────────────────────────────────────────────────────────────
 function renderTax(){
   const el=document.getElementById('tax-content');
-  const toggle='<div class="report-toggle"><button class="rt-btn '+(taxMode==='hmrc'?'active':'')+'" onclick="setTaxMode(\'hmrc\')">📋 HMRC Annual</button><button class="rt-btn '+(taxMode==='uc'?'active':'')+'" onclick="setTaxMode(\'uc\')">💷 Universal Credit</button></div>';
+  const toggle='<div class="report-toggle"><button class="rt-btn '+(taxMode==='hmrc'?'active':'')+'" onclick="setTaxMode(\'hmrc\')">📋 HMRC</button><button class="rt-btn '+(taxMode==='uc'?'active':'')+'" onclick="setTaxMode(\'uc\')">💷 UC</button><button class="rt-btn '+(taxMode==='actual'?'active':'')+'" onclick="setTaxMode(\'actual\')">💰 Actual</button></div>';
   if(taxMode==='hmrc') renderHmrc(el,toggle);
-  else renderUC(el,toggle);
+  else if(taxMode==='uc') renderUC(el,toggle);
+  else renderActual(el,toggle);
 }
 function setTaxMode(m){taxMode=m;render();}
 function setTY(y){curTY=y;render();}
