@@ -1042,6 +1042,54 @@ function renderUC(el,toggle){
   el.innerHTML=toggle+'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;">'+monRow+'</div><div class="date-range"><label>📅 Assessment period — '+monLbl(ucMon)+'</label><div class="dr-row"><input type="date" id="uc-from" value="'+drF+'" onchange="render()"/><span>to</span><input type="date" id="uc-to" value="'+drT+'" onchange="render()"/></div><div style="font-size:11px;color:var(--muted);margin-top:6px">Adjust if your UC assessment period doesn\'t match the calendar month.</div></div><div class="banner '+(net>=0?'g':'r')+'"><div><div class="bl">Net earnings to report</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+us.length+' slots · '+totMi.toFixed(0)+' miles</div></div><div class="bv">'+fmtGBP(net)+'</div></div><div class="tax-block"><h3>💷 UC journal entry — '+monLbl(ucMon||curMon)+'</h3><div class="tax-row"><span class="tl">Total income</span><span>'+fmtGBP(totInc)+'</span></div><div style="padding:4px 0 6px"><div class="tier-row"><span>Mileage: first '+t1mi.toFixed(0)+' mi × 45p</span><span>−'+fmtGBP(t1mi*0.45)+'</span></div>'+(t2mi>0?'<div class="tier-row"><span>Mileage: next '+t2mi.toFixed(0)+' mi × 25p (over 833)</span><span>−'+fmtGBP(t2mi*0.25)+'</span></div>':'')+'<div class="tier-row" style="border-top:1px solid var(--border);padding-top:4px"><span>Total mileage allowance</span><span>−'+fmtGBP(ucMilA)+'</span></div></div><div class="tax-row"><span class="tl">H&R insurance (£1.49/hr)</span><span style="color:var(--red)">−'+fmtGBP(totHr)+'</span></div>'+(totOthS>0?'<div class="tax-row"><span class="tl">Parking, tolls</span><span style="color:var(--red)">−'+fmtGBP(totOthS)+'</span></div>':'')+(totExpA>0?'<div class="tax-row"><span class="tl">Other expenses</span><span style="color:var(--red)">−'+fmtGBP(totExpA)+'</span></div>':'')+'<div class="tax-row"><span style="font-weight:700">Net earnings to declare</span><span style="color:'+(net>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmtGBP(net)+'</span></div></div><div class="info-box"><strong>UC mileage:</strong> 45p first 833 miles, then 25p/mile. Threshold resets every assessment period.'+(totMi>833?' <strong>You exceeded 833 miles this period</strong> — '+t2mi.toFixed(0)+' miles at 25p.':' You are within the 833-mile 45p threshold.')+'</div>'+(allRows.length>1?'<div class="tax-block"><h3>All months summary</h3>'+allRows.map(r=>'<div class="tax-row" onclick="setUCMon(\''+r.m+'\')" style="cursor:pointer"><span class="tl">'+monLbl(r.m)+' ('+r.slots+' slots · '+r.mTM.toFixed(0)+' mi)</span><span style="color:'+(r.mN>=0?'var(--green)':'var(--red)')+'">'+fmtGBP(r.mN)+'</span></div>').join('')+'<div class="tax-row"><span style="font-weight:700">Total all periods</span><span style="color:var(--amber);font-weight:700">'+fmtGBP(allRows.reduce((a,r)=>a+r.mN,0))+'</span></div></div>':'')+'<div class="sh"><h2>Export</h2></div><div class="export-grid"><div class="export-btn" onclick="exportCSV()"><div class="ei">📄</div><div class="el">CSV export</div></div><div class="export-btn" onclick="window.print()"><div class="ei">🖨</div><div class="el">Print / PDF</div></div></div>';
 }
 
+// ── Actual (real cash) report ───────────────────────────────────────────────────
+function renderActual(el,toggle){
+  const months=getMonths();
+  if(!actualMon||!months.includes(actualMon))actualMon=months[0]||curMon;
+  const [y,mo]=(actualMon||curMon).split('-').map(Number);
+  const lastDay=new Date(y,mo,0).getDate();
+  const defF=y+'-'+String(mo).padStart(2,'0')+'-01';
+  const defT=y+'-'+String(mo).padStart(2,'0')+'-'+lastDay;
+  const drF=document.getElementById('act-from')?.value||defF;
+  const drT=document.getElementById('act-to')?.value||defT;
+  const fD=new Date(drF+'T00:00:00'),tD=new Date(drT+'T23:59:59');
+
+  const as_=slots.filter(s=>{if(!s.date)return false;const d=new Date(String(s.date).slice(0,10)+'T00:00:00');return d>=fD&&d<=tD;});
+  const ae=expenses.filter(e=>{if(!e.date)return false;const d=new Date(String(e.date).slice(0,10)+'T00:00:00');return d>=fD&&d<=tD;});
+
+  // Real cash income: gross + tips + timecomp (no mileage allowance, that's not real cash)
+  const totIncome=as_.reduce((a,s)=>a+(+s.gross||0)+(+s.tips||0)+(+s.timecomp||0),0);
+  const cancelledCount=as_.filter(s=>s.cancelled).length;
+  const workedCount=as_.length-cancelledCount;
+
+  // Group expenses by category
+  const catTotals={};
+  ae.forEach(e=>{catTotals[e.category]=(catTotals[e.category]||0)+(+e.amount||0);});
+  const totExpenses=ae.reduce((a,e)=>a+(+e.amount||0),0);
+  const totPenalty=catTotals.penalty||0;
+  const netCash=+(totIncome-totExpenses).toFixed(2);
+
+  const catRows=Object.entries(catTotals).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    '<div class="tax-row"><span class="tl">'+CATI[k]+' '+CATL[k]+(k==='penalty'?' <span style="color:var(--amber);font-size:10px">(not tax-deductible)</span>':'')+'</span><span style="color:var(--red)">−'+fmtGBP(v)+'</span></div>'
+  ).join('');
+
+  const monRow=months.map(m=>'<button class="month-chip '+(m===actualMon?'active':'')+'" onclick="setActualMon(\''+m+'\')">'+monLbl(m)+'</button>').join('');
+
+  el.innerHTML=toggle+'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;">'+monRow+'</div>'
+    +'<div class="date-range"><label>📅 Date range</label><div class="dr-row"><input type="date" id="act-from" value="'+drF+'" onchange="render()"/><span>to</span><input type="date" id="act-to" value="'+drT+'" onchange="render()"/></div></div>'
+    +'<div class="banner '+(netCash>=0?'g':'r')+'"><div><div class="bl">Real cash profit</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+workedCount+' worked'+(cancelledCount>0?' + '+cancelledCount+' cancelled (paid)':'')+'</div></div><div class="bv">'+fmtGBP(netCash)+'</div></div>'
+    +'<div class="info-box"><strong>This is your true take-home.</strong> Unlike HMRC/UC reports (which use mileage allowance as an estimate), this counts only money that actually moved — what you earned minus what you really spent on fuel, insurance, MOT, tyres, etc.</div>'
+    +'<div class="tax-block"><h3>💰 Real cash summary — '+monLbl(actualMon)+'</h3>'
+    +'<div class="tax-row"><span class="tl">Gross income (pay + tips + comp)</span><span style="color:var(--green)">'+fmtGBP(totIncome)+'</span></div>'
+    +(catRows||'<div class="tax-row"><span class="tl" style="color:var(--muted)">No expenses logged this period</span><span></span></div>')
+    +'<div class="tax-row"><span style="font-weight:700">Total expenses</span><span style="color:var(--red)">−'+fmtGBP(totExpenses)+'</span></div>'
+    +'<div class="tax-row"><span style="font-weight:700">Real cash profit</span><span style="color:'+(netCash>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmtGBP(netCash)+'</span></div>'
+    +'</div>'
+    +(totPenalty>0?'<div class="info-box" style="background:var(--amber-bg);border-color:var(--amber-bd)"><strong>⚠️ Penalties:</strong> '+fmtGBP(totPenalty)+' in fines included above for real cash tracking, but these are NOT tax-deductible and should be excluded from HMRC/UC filings.</div>':'')
+    +'<div class="sh"><h2>Export</h2></div><div class="export-grid"><div class="export-btn" onclick="exportCSV()"><div class="ei">📄</div><div class="el">CSV export</div></div><div class="export-btn" onclick="window.print()"><div class="ei">🖨</div><div class="el">Print / PDF</div></div></div>';
+}
+function setActualMon(m){actualMon=m;render();}
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 function renderReports() {
   const el = document.getElementById('reports-content');
