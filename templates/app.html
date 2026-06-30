@@ -873,6 +873,7 @@ function render() {
     reports: renderReports
   };
   const fn = fns[activeTab];
+  alert('DEBUG: activeTab=' + activeTab + ' fn=' + typeof fn);
   if (!fn) return;
   try {
     fn();
