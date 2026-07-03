@@ -934,7 +934,7 @@ function renderDash() {
   const mc=ms.map(calcSlot);
   const me=expenses.filter(e=>{ if(!e.date) return false; const m=String(e.date).match(/^(\d{4}-\d{2})/); return m&&m[1]===curMon; });
   const totG=mc.reduce((a,c)=>a+c.income,0),totN=mc.reduce((a,c)=>a+c.net,0);
-  const totMi=mc.reduce((a,c)=>a+c.miles,0),totExp=me.reduce((a,e)=>a+e.amount,0);
+  const totMi=mc.reduce((a,c)=>a+c.miles,0),totExp=me.reduce((a,e)=>a+(+e.amount||0),0);
   const pendRet=returns_.filter(r=>r.status==='pending').length;
   const pct=totG>0?totN/totG*100:0;
   let wHtml='';
