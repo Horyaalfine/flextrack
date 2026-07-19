@@ -21,6 +21,16 @@ input,select,button{font-family:inherit;font-size:inherit;}
 button{cursor:pointer;}
 #app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
 
+/* Paywall */
+.paywall{max-width:400px;margin:0 auto;padding:48px 24px;text-align:center;}
+.paywall .logo{font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:8px;}
+.paywall .logo span{color:var(--accent);}
+.pw-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:28px 24px;margin:24px 0;}
+.pw-price{font-size:48px;font-weight:800;letter-spacing:-2px;color:var(--accent);}
+.pw-period{font-size:14px;color:var(--muted);margin-top:-4px;margin-bottom:20px;}
+.pw-features{text-align:left;margin:20px 0;}
+.pw-features li{list-style:none;padding:6px 0;font-size:14px;color:var(--muted2);}
+.pw-features li::before{content:'✓ ';color:var(--green);font-weight:700;}
 /* Auth screens */
 .auth-wrap{max-width:400px;margin:0 auto;padding:48px 24px;}
 .auth-logo{font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px;}
@@ -606,6 +616,25 @@ async function doRegister() {
   } catch(e) { err.textContent=e.message; err.style.display='block'; }
 }
 
+function checkSubscription(r) {
+  const status = r.status || r.subscription_status;
+  const daysLeft = r.trial_days_left;
+  if (status === 'expired' || (status === 'trial' && daysLeft <= 0)) {
+    document.getElementById('screen-auth').style.display = 'none';
+    document.getElementById('app-wrap').style.display = 'none';
+    document.getElementById('paywall-wrap').style.display = '';
+    return false;
+  }
+  document.getElementById('paywall-wrap').style.display = 'none';
+  document.getElementById('app-wrap').style.display = '';
+  if (status === 'trial' && daysLeft > 0) {
+    const tb = document.getElementById('trial-bar');
+    if (tb) { tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining'; tb.style.display = 'block'; }
+  }
+  // Show "Manage subscription" in settings if active
+  return true;
+}
+
 function showTrialInfo(r) {
   const bar = document.getElementById('trial-bar');
   if (r.status==='trial' && r.trial_days_left > 0) {
@@ -623,6 +652,25 @@ function showUserMenu() {
 }
 
 // ── Load all data ─────────────────────────────────────────────────────────────
+async function startCheckout() {
+  const btn = document.querySelector('#paywall-wrap .btn-p');
+  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+  try {
+    const r = await api('POST', '/api/stripe/create-checkout', { base_url: window.location.origin });
+    window.location.href = r.url;
+  } catch(e) {
+    alert('Error: ' + e.message);
+    if (btn) { btn.textContent = 'Subscribe — £3/month'; btn.disabled = false; }
+  }
+}
+
+async function openBillingPortal() {
+  try {
+    const r = await api('POST', '/api/stripe/portal', { base_url: window.location.origin });
+    window.location.href = r.url;
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 async function loadAll() {
   document.getElementById('screen-auth').style.display='none';
   document.getElementById('screen-app').style.display='';
