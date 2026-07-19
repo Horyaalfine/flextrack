@@ -94,7 +94,8 @@ def init_db():
             trial_ends_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 days'),
             subscription_status VARCHAR(50) DEFAULT 'trial',
             stripe_customer_id VARCHAR(255),
-            stripe_subscription_id VARCHAR(255)
+            stripe_subscription_id VARCHAR(255),
+            hr_rate NUMERIC(5,2) DEFAULT 1.49
         )
     """)
     cur.execute("""
@@ -125,6 +126,9 @@ def init_db():
     """)
     cur.execute("""
         ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)
+    """)
+    cur.execute("""
+        ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS hr_rate NUMERIC(5,2) DEFAULT 1.49
     """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ft_expenses (
@@ -241,7 +245,7 @@ def me():
         return jsonify({'error': 'User not found'}), 404
     trial_ends = user['trial_ends_at']
     days_left = (trial_ends.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days if trial_ends else 0
-    return jsonify({**dict(user), 'trial_days_left': max(0, days_left),
+    return jsonify({**dict(user), 'trial_days_left': max(0, days_left), 'hr_rate': float(user.get('hr_rate') or 1.49),
                     'trial_ends_at': trial_ends.isoformat() if trial_ends else None,
                     'created_at': user['created_at'].isoformat() if user['created_at'] else None})
 
@@ -356,6 +360,23 @@ def update_return(ret_id):
 def delete_return(ret_id):
     query('DELETE FROM ft_returns WHERE id=%s AND user_id=%s', (ret_id, g.user_id), commit=True)
     return jsonify({'ok': True})
+
+# ── User settings ─────────────────────────────────────────────────────────────
+@app.route('/api/settings', methods=['GET'])
+@token_required
+def get_settings():
+    user = query('SELECT hr_rate FROM ft_users WHERE id=%s', (g.user_id,), one=True)
+    return jsonify({'hr_rate': float(user['hr_rate']) if user['hr_rate'] else 1.49})
+
+@app.route('/api/settings', methods=['PUT'])
+@token_required
+def update_settings():
+    d = request.json
+    hr_rate = float(d.get('hr_rate', 1.49))
+    if hr_rate < 0 or hr_rate > 10:
+        return jsonify({'error': 'H&R rate must be between £0 and £10/hr'}), 400
+    query('UPDATE ft_users SET hr_rate=%s WHERE id=%s', (hr_rate, g.user_id), commit=True)
+    return jsonify({'ok': True, 'hr_rate': hr_rate})
 
 # ── Stripe ────────────────────────────────────────────────────────────────────
 @app.route('/api/stripe/config', methods=['GET'])
