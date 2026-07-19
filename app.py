@@ -9,6 +9,10 @@ from flask import Flask, request, jsonify, render_template, g
 from dotenv import load_dotenv
 
 load_dotenv()
+import stripe
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID', 'price_1TuyM5CRmG5p6ItKOPWycQjh')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 
 import datetime as _dt
 from flask.json.provider import DefaultJSONProvider
@@ -88,7 +92,9 @@ def init_db():
             password_hash VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT NOW(),
             trial_ends_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 days'),
-            subscription_status VARCHAR(50) DEFAULT 'trial'
+            subscription_status VARCHAR(50) DEFAULT 'trial',
+            stripe_customer_id VARCHAR(255),
+            stripe_subscription_id VARCHAR(255)
         )
     """)
     cur.execute("""
@@ -113,6 +119,12 @@ def init_db():
     """)
     cur.execute("""
         ALTER TABLE ft_slots ADD COLUMN IF NOT EXISTS cancelled BOOLEAN DEFAULT FALSE
+    """)
+    cur.execute("""
+        ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255)
+    """)
+    cur.execute("""
+        ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)
     """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ft_expenses (
@@ -344,6 +356,91 @@ def update_return(ret_id):
 def delete_return(ret_id):
     query('DELETE FROM ft_returns WHERE id=%s AND user_id=%s', (ret_id, g.user_id), commit=True)
     return jsonify({'ok': True})
+
+# ── Stripe ────────────────────────────────────────────────────────────────────
+@app.route('/api/stripe/config', methods=['GET'])
+@token_required
+def stripe_config():
+    return jsonify({'publishable_key': STRIPE_PUBLISHABLE_KEY, 'price_id': STRIPE_PRICE_ID})
+
+@app.route('/api/stripe/create-checkout', methods=['POST'])
+@token_required
+def create_checkout():
+    try:
+        user = query('SELECT * FROM ft_users WHERE id=%s', (g.user_id,), one=True)
+        # Get or create Stripe customer
+        if user['stripe_customer_id']:
+            customer_id = user['stripe_customer_id']
+        else:
+            customer = stripe.Customer.create(email=user['email'], metadata={'user_id': g.user_id})
+            customer_id = customer.id
+            query('UPDATE ft_users SET stripe_customer_id=%s WHERE id=%s', (customer_id, g.user_id), commit=True)
+        
+        base_url = request.json.get('base_url', 'https://flexlog.co.uk')
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=['card'],
+            line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
+            mode='subscription',
+            success_url=base_url + '/app?subscribed=1',
+            cancel_url=base_url + '/app?cancelled=1',
+            allow_promotion_codes=True,
+        )
+        return jsonify({'url': session.url})
+    except Exception as e:
+        print(f'Checkout error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stripe/webhook', methods=['POST'])
+def stripe_webhook():
+    payload = request.get_data()
+    sig_header = request.headers.get('Stripe-Signature')
+    webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+    try:
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        else:
+            event = stripe.Event.construct_from(request.json, stripe.api_key)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        customer_id = session.get('customer')
+        subscription_id = session.get('subscription')
+        if customer_id:
+            query('UPDATE ft_users SET subscription_status=%s, stripe_subscription_id=%s WHERE stripe_customer_id=%s',
+                  ('active', subscription_id, customer_id), commit=True)
+    
+    elif event['type'] == 'invoice.payment_succeeded':
+        sub_id = event['data']['object'].get('subscription')
+        if sub_id:
+            query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
+                  ('active', sub_id), commit=True)
+    
+    elif event['type'] in ('customer.subscription.deleted', 'invoice.payment_failed'):
+        sub_id = event['data']['object'].get('id') or event['data']['object'].get('subscription')
+        if sub_id:
+            query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
+                  ('expired', sub_id), commit=True)
+    
+    return jsonify({'ok': True})
+
+@app.route('/api/stripe/portal', methods=['POST'])
+@token_required
+def customer_portal():
+    try:
+        user = query('SELECT stripe_customer_id FROM ft_users WHERE id=%s', (g.user_id,), one=True)
+        if not user or not user['stripe_customer_id']:
+            return jsonify({'error': 'No subscription found'}), 400
+        base_url = request.json.get('base_url', 'https://flexlog.co.uk')
+        session = stripe.billing_portal.Session.create(
+            customer=user['stripe_customer_id'],
+            return_url=base_url + '/app',
+        )
+        return jsonify({'url': session.url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     if DATABASE_URL:
