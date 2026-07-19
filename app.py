@@ -91,7 +91,7 @@ def init_db():
             email VARCHAR(255) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT NOW(),
-            trial_ends_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 days'),
+            trial_ends_at TIMESTAMP DEFAULT (NOW() + INTERVAL '7 days'),
             subscription_status VARCHAR(50) DEFAULT 'trial',
             stripe_customer_id VARCHAR(255),
             stripe_subscription_id VARCHAR(255),
