@@ -182,6 +182,25 @@ def health():
     return jsonify({'status': 'ok', 'db': db_ok, 'app': 'FlexTrack'})
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
+def send_admin_notification(user_email, event):
+    import smtplib
+    from email.mime.text import MIMEText
+    smtp_host = os.environ.get('SMTP_HOST', 'mail.privateemail.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', 465))
+    smtp_user = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
+    smtp_pass = os.environ.get('SMTP_PASS', '')
+    if not smtp_pass:
+        print('SMTP_PASS not set, skipping notification')
+        return
+    msg = MIMEText(f'{event}\n\nUser: {user_email}\nTime: {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}\n\nView in Stripe dashboard for subscription status.')
+    msg['Subject'] = f'FlexLog: {event} — {user_email}'
+    msg['From'] = smtp_user
+    msg['To'] = smtp_user
+    with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
+        s.login(smtp_user, smtp_pass)
+        s.send_message(msg)
+    print(f'Notification sent for {event}: {user_email}')
+
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
@@ -204,9 +223,14 @@ def register():
             'user_id': user['id'],
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
+        # Send notification email to admin
+        try:
+            send_admin_notification(email, 'New trial signup')
+        except Exception as ne:
+            print(f'Notification email failed: {ne}')
         return jsonify({'token': token, 'email': email, 'status': 'trial',
                         'trial_ends_at': user['trial_ends_at'].isoformat(),
-                        'trial_days_left': 30})
+                        'trial_days_left': 7})
     except Exception as e:
         print(f'Register error: {e}')
         return jsonify({'error': str(e)}), 500
