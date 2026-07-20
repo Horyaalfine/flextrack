@@ -204,6 +204,40 @@ def register():
             'user_id': user['id'],
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
+        # Send welcome email to new driver
+        try:
+            send_email(email, "Welcome to FlexLog -- here is how to get started", """Hi there,
+
+Welcome to FlexLog! Your 7-day free trial has started.
+
+Here is how to get the most out of FlexLog:
+
+1. LOG YOUR SLOTS
+   Tap Log slot, enter your date, times and odometer readings.
+   FlexLog calculates your mileage, H&R insurance and net profit automatically.
+
+2. LOG YOUR EXPENSES
+   Add fuel, MOT, insurance, tyres -- anything you spend on the car.
+   These show in your Actual Cash report (separate from HMRC figures).
+
+3. CHECK YOUR REPORTS
+   Tax/UC tab shows your HMRC SA103 figures and Universal Credit monthly earnings.
+   Reports tab shows charts, day-of-week analysis and sortable slot breakdown.
+
+4. SET YOUR H&R RATE
+   Tap the gear icon (top right) and enter your actual H&R insurance rate per hour.
+   Default is 1.49/hr -- change it to match your policy.
+
+Your trial runs for 7 days. After that it is just 3/month -- cancel anytime.
+
+Any questions? Reply to this email and I will help personally.
+
+Good luck out there,
+MRAhmed
+FlexLog -- flexlog.co.uk
+support@flexlog.co.uk""")
+        except Exception as ne:
+            print(f'Welcome email failed: {ne}')
         # Send notification email to admin
         try:
             send_admin_notification(email, 'New trial signup')
