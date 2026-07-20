@@ -182,25 +182,6 @@ def health():
     return jsonify({'status': 'ok', 'db': db_ok, 'app': 'FlexTrack'})
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
-def send_admin_notification(user_email, event):
-    import smtplib
-    from email.mime.text import MIMEText
-    smtp_host = os.environ.get('SMTP_HOST', 'mail.privateemail.com')
-    smtp_port = int(os.environ.get('SMTP_PORT', 465))
-    smtp_user = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
-    smtp_pass = os.environ.get('SMTP_PASS', '')
-    if not smtp_pass:
-        print('SMTP_PASS not set, skipping notification')
-        return
-    msg = MIMEText(f'{event}\n\nUser: {user_email}\nTime: {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}\n\nView in Stripe dashboard for subscription status.')
-    msg['Subject'] = f'FlexLog: {event} — {user_email}'
-    msg['From'] = smtp_user
-    msg['To'] = smtp_user
-    with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
-        s.login(smtp_user, smtp_pass)
-        s.send_message(msg)
-    print(f'Notification sent for {event}: {user_email}')
-
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
@@ -384,6 +365,84 @@ def update_return(ret_id):
 def delete_return(ret_id):
     query('DELETE FROM ft_returns WHERE id=%s AND user_id=%s', (ret_id, g.user_id), commit=True)
     return jsonify({'ok': True})
+
+# ── Email helpers ─────────────────────────────────────────────────────────────
+def send_email(to_email, subject, body_text):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    smtp_host = os.environ.get('SMTP_HOST', 'mail.privateemail.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', 465))
+    smtp_user = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
+    smtp_pass = os.environ.get('SMTP_PASS', '')
+    if not smtp_pass:
+        print(f'SMTP_PASS not set, skipping email to {to_email}')
+        return False
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = f'FlexLog <{smtp_user}>'
+    msg['To'] = to_email
+    msg.attach(MIMEText(body_text, 'plain'))
+    with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
+        s.login(smtp_user, smtp_pass)
+        s.send_message(msg)
+    print(f'Email sent to {to_email}: {subject}')
+    return True
+
+def send_admin_notification(user_email, event):
+    send_email(
+        os.environ.get('SMTP_USER', 'support@flexlog.co.uk'),
+        f'FlexLog: {event} -- {user_email}',
+        f'{event}\n\nUser: {user_email}\nTime: {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}'
+    )
+
+# ── Trial reminder job ─────────────────────────────────────────────────────────
+@app.route('/api/internal/send-trial-reminders', methods=['POST'])
+def send_trial_reminders():
+    secret = request.headers.get('X-Internal-Secret', '')
+    if secret != os.environ.get('INTERNAL_SECRET', ''):
+        return jsonify({'error': 'Unauthorised'}), 401
+    try:
+        sent = 0
+        users_3day = query(
+            "SELECT email FROM ft_users WHERE subscription_status='trial' "
+            "AND trial_ends_at BETWEEN NOW() + INTERVAL '2 days 20 hours' "
+            "AND NOW() + INTERVAL '3 days 4 hours'"
+        )
+        for u in (users_3day or []):
+            body = ("Hi there,\n\nYour 7-day free trial of FlexLog ends in 3 days.\n\n"
+                    "To keep tracking your Amazon Flex earnings, subscribe for just £3/month.\n\n"
+                    "Subscribe here: https://flexlog.co.uk/app\n\n"
+                    "No contract — cancel anytime.\n\nThe FlexLog Team\nsupport@flexlog.co.uk")
+            send_email(u['email'], 'Your FlexLog trial ends in 3 days', body)
+            sent += 1
+        users_1day = query(
+            "SELECT email FROM ft_users WHERE subscription_status='trial' "
+            "AND trial_ends_at BETWEEN NOW() + INTERVAL '20 hours' "
+            "AND NOW() + INTERVAL '28 hours'"
+        )
+        for u in (users_1day or []):
+            body = ("Hi there,\n\nYour FlexLog free trial ends tomorrow.\n\n"
+                    "Don't lose access to your slots, mileage records and HMRC/UC reports.\n\n"
+                    "Subscribe for just £3/month — less than one slot's fuel.\n\n"
+                    "Subscribe here: https://flexlog.co.uk/app\n\nThe FlexLog Team\nsupport@flexlog.co.uk")
+            send_email(u['email'], 'Your FlexLog trial ends tomorrow', body)
+            sent += 1
+        users_expired = query(
+            "SELECT id, email FROM ft_users WHERE subscription_status='trial' AND trial_ends_at < NOW()"
+        )
+        for u in (users_expired or []):
+            query("UPDATE ft_users SET subscription_status='expired' WHERE id=%s", (u['id'],), commit=True)
+            body = ("Hi there,\n\nYour FlexLog free trial has ended.\n\n"
+                    "Subscribe for just £3/month to continue tracking your Amazon Flex earnings "
+                    "and accessing your HMRC and Universal Credit reports.\n\n"
+                    "Subscribe here: https://flexlog.co.uk/app\n\nThe FlexLog Team\nsupport@flexlog.co.uk")
+            send_email(u['email'], 'Your FlexLog trial has ended', body)
+            sent += 1
+        return jsonify({'ok': True, 'emails_sent': sent})
+    except Exception as e:
+        print(f'Trial reminder error: {e}')
+        return jsonify({'error': str(e)}), 500
 
 # ── User settings ─────────────────────────────────────────────────────────────
 @app.route('/api/settings', methods=['GET'])
