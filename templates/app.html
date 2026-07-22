@@ -637,19 +637,25 @@ async function doRegister() {
 function checkSubscription(r) {
   const status = r.status || r.subscription_status;
   const daysLeft = r.trial_days_left;
-  if (status === 'expired' || (status === 'trial' && daysLeft <= 0)) {
-    document.getElementById('screen-auth').style.display = 'none';
-    document.getElementById('app-wrap').style.display = 'none';
-    document.getElementById('paywall-wrap').style.display = '';
-    return false;
-  }
   document.getElementById('paywall-wrap').style.display = 'none';
   document.getElementById('app-wrap').style.display = '';
-  if (status === 'trial' && daysLeft > 0) {
+  if (status === 'expired' || (status === 'trial' && daysLeft <= 0)) {
+    // Show expired banner but keep app visible in read-only mode
+    window._trialExpired = true;
     const tb = document.getElementById('trial-bar');
-    if (tb) { tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining'; tb.style.display = 'block'; }
+    if (tb) {
+      tb.style.background = 'var(--red)';
+      tb.style.color = '#fff';
+      tb.innerHTML = '⚠️ Your trial has expired. <a href="#" onclick="startCheckout();return false;" style="color:#fff;font-weight:700;text-decoration:underline;">Subscribe for £3/month to continue →</a>';
+      tb.style.display = 'block';
+    }
+  } else {
+    window._trialExpired = false;
+    if (status === 'trial' && daysLeft > 0) {
+      const tb = document.getElementById('trial-bar');
+      if (tb) { tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining'; tb.style.display = 'block'; }
+    }
   }
-  // Show "Manage subscription" in settings if active
   return true;
 }
 
@@ -775,7 +781,18 @@ function closeModal(id) { document.getElementById(id).style.display='none'; }
 function closeBg(e,id)  { if(e.target.id===id) closeModal(id); }
 
 // ── Slot modal ────────────────────────────────────────────────────────────────
+function _checkExpired() {
+  if (window._trialExpired) {
+    if (confirm('Your trial has expired.\n\nSubscribe for £3/month to add and edit data.\n\nGo to payment page?')) {
+      startCheckout();
+    }
+    return true;
+  }
+  return false;
+}
+
 function openSlotModal(id) {
+  if (!id && _checkExpired()) return;  // block new slots, allow editing existing
   editSlotId=id||null;
   const s=id?slots.find(x=>x.id===id):null;
   document.getElementById('slot-modal-title').textContent=id?'Edit slot':'Log slot';
@@ -859,6 +876,7 @@ function updateSlotPrev() {
 ['s-os','s-oe'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updateOdoPrev);});
 
 async function saveSlot() {
+  if (_checkExpired()) return;
   const date=document.getElementById('s-date').value,gross=document.getElementById('s-gross').value;
   if(!date||!gross){alert('Date and gross pay required.');return;}
   const cancelled = document.getElementById('s-cancelled').checked;
@@ -904,6 +922,7 @@ async function deleteSlot() {
 
 // ── Expense modal ─────────────────────────────────────────────────────────────
 function openExpModal(id) {
+  if (!id && _checkExpired()) return;
   editExpId=id||null;const e=id?expenses.find(x=>x.id===id):null;
   document.getElementById('exp-modal-title').textContent=id?'Edit expense':'Log expense';
   document.getElementById('exp-del-btn').style.display=id?'inline-flex':'none';
