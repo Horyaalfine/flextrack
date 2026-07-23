@@ -737,11 +737,7 @@ function showTrialInfo(r) {
 }
 
 function showUserMenu() {
-  if (confirm('Signed in as '+userEmail+'\n\nSign out?')) {
-    token=''; userEmail='';
-    localStorage.removeItem('ft_token'); localStorage.removeItem('ft_email');
-    location.reload();
-  }
+  openSettings();
 }
 
 // ── Load all data ─────────────────────────────────────────────────────────────
