@@ -1516,6 +1516,17 @@ function exportCSV(){
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
+  // Check for password reset token in URL first
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetTok = urlParams.get('reset');
+  if (resetTok) {
+    document.querySelectorAll('.auth-wrap').forEach(x=>x.style.display='none');
+    const resetScreen = document.getElementById('auth-reset');
+    if (resetScreen) resetScreen.style.display='';
+    document.getElementById('screen-auth').style.display='';
+    document.getElementById('screen-app').style.display='none';
+    return;
+  }
   const hash=location.hash;
   if(hash==='#register'){showRegister();}
   if(token){
