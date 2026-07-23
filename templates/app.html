@@ -696,15 +696,27 @@ async function saveSettings() {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+let _pwPlan = 'monthly';
+
+function setPwPlan(plan) {
+  _pwPlan = plan;
+  document.getElementById('pw-monthly-btn').classList.toggle('active', plan === 'monthly');
+  document.getElementById('pw-annual-btn').classList.toggle('active', plan === 'annual');
+  document.getElementById('pw-monthly-view').style.display = plan === 'monthly' ? 'block' : 'none';
+  document.getElementById('pw-annual-view').style.display = plan === 'annual' ? 'block' : 'none';
+  const btn = document.getElementById('pw-subscribe-btn');
+  if (btn) btn.textContent = plan === 'annual' ? 'Subscribe — £29/year' : 'Subscribe — £3/month';
+}
+
 async function startCheckout() {
-  const btn = document.querySelector('#paywall-wrap .btn-p');
+  const btn = document.getElementById('pw-subscribe-btn') || document.querySelector('#paywall-wrap .btn-p');
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const r = await api('POST', '/api/stripe/create-checkout', { base_url: window.location.origin });
+    const r = await api('POST', '/api/stripe/create-checkout', { base_url: window.location.origin, plan: _pwPlan });
     window.location.href = r.url;
   } catch(e) {
     alert('Error: ' + e.message);
-    if (btn) { btn.textContent = 'Subscribe — £3/month'; btn.disabled = false; }
+    if (btn) { setPwPlan(_pwPlan); btn.disabled = false; }
   }
 }
 
