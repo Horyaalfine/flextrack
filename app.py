@@ -12,6 +12,7 @@ load_dotenv()
 import stripe
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID', 'price_1TuyM5CRmG5p6ItKOPWycQjh')
+STRIPE_ANNUAL_PRICE_ID = os.environ.get('STRIPE_ANNUAL_PRICE_ID', 'price_1TwLtZCRmG5p6ItKVwjKgyYy')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 
 import datetime as _dt
@@ -503,7 +504,11 @@ def update_settings():
 @app.route('/api/stripe/config', methods=['GET'])
 @token_required
 def stripe_config():
-    return jsonify({'publishable_key': STRIPE_PUBLISHABLE_KEY, 'price_id': STRIPE_PRICE_ID})
+    return jsonify({
+        'publishable_key': STRIPE_PUBLISHABLE_KEY,
+        'price_id': STRIPE_PRICE_ID,
+        'annual_price_id': STRIPE_ANNUAL_PRICE_ID
+    })
 
 @app.route('/api/stripe/create-checkout', methods=['POST'])
 @token_required
@@ -519,10 +524,12 @@ def create_checkout():
             query('UPDATE ft_users SET stripe_customer_id=%s WHERE id=%s', (customer_id, g.user_id), commit=True)
         
         base_url = request.json.get('base_url', 'https://flexlog.co.uk')
+        plan = request.json.get('plan', 'monthly')
+        price_id = STRIPE_ANNUAL_PRICE_ID if plan == 'annual' else STRIPE_PRICE_ID
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=['card'],
-            line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
+            line_items=[{'price': price_id, 'quantity': 1}],
             mode='subscription',
             success_url=base_url + '/app?subscribed=1',
             cancel_url=base_url + '/app?cancelled=1',
