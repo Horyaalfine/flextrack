@@ -402,8 +402,9 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="fg-m"><label>New password</label><input type="password" id="chpw-new" placeholder="At least 6 characters"/></div>
   <div class="fg-m"><label>Confirm new password</label><input type="password" id="chpw-new2" placeholder="Repeat new password"/></div>
   <button class="btn btn-primary" onclick="doChangePassword()">Update password</button>
-  <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
-  <button class="btn btn-primary" onclick="doSignOut()" style="background:var(--red);border-color:var(--red);width:100%;">🚪 Sign out</button>
+  <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--red);">
+    <button class="btn btn-primary" onclick="doSignOut()" style="background:var(--red);border-color:var(--red);width:100%;font-size:15px;">🚪 Sign out of FlexLog</button>
+  </div>
 </div>
 </div>
 
