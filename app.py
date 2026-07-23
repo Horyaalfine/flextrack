@@ -96,7 +96,9 @@ def init_db():
             subscription_status VARCHAR(50) DEFAULT 'trial',
             stripe_customer_id VARCHAR(255),
             stripe_subscription_id VARCHAR(255),
-            hr_rate NUMERIC(5,2) DEFAULT 1.49
+            hr_rate NUMERIC(5,2) DEFAULT 1.49,
+            reset_token VARCHAR(255),
+            reset_token_expires TIMESTAMP
         )
     """)
     cur.execute("""
@@ -130,6 +132,12 @@ def init_db():
     """)
     cur.execute("""
         ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS hr_rate NUMERIC(5,2) DEFAULT 1.49
+    """)
+    cur.execute("""
+        ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)
+    """)
+    cur.execute("""
+        ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP
     """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ft_expenses (
@@ -482,6 +490,54 @@ def send_trial_reminders():
     except Exception as e:
         print(f'Trial reminder error: {e}')
         return jsonify({'error': str(e)}), 500
+
+# ── Password reset ────────────────────────────────────────────────────────────
+import secrets
+
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    email = request.json.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    user = query('SELECT id, email FROM ft_users WHERE email=%s', (email,), one=True)
+    if not user:
+        # Don't reveal if email exists or not
+        return jsonify({'ok': True})
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    query('''UPDATE ft_users SET reset_token=%s, reset_token_expires=%s WHERE id=%s''',
+          (token, expires, user['id']), commit=True)
+    reset_url = f"https://flexlog.co.uk/app?reset={token}"
+    body = (
+        f"Hi there,\n\n"
+        f"You requested a password reset for your FlexLog account.\n\n"
+        f"Click the link below to reset your password (valid for 1 hour):\n\n"
+        f"{reset_url}\n\n"
+        f"If you didn't request this, ignore this email.\n\n"
+        f"The FlexLog Team\nsupport@flexlog.co.uk"
+    )
+    try:
+        send_email(email, 'Reset your FlexLog password', body)
+    except Exception as e:
+        print(f'Reset email error: {e}')
+    return jsonify({'ok': True})
+
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    token = request.json.get('token', '')
+    new_pw = request.json.get('password', '')
+    if not token or not new_pw or len(new_pw) < 6:
+        return jsonify({'error': 'Invalid request'}), 400
+    user = query(
+        'SELECT id FROM ft_users WHERE reset_token=%s AND reset_token_expires > NOW()',
+        (token,), one=True
+    )
+    if not user:
+        return jsonify({'error': 'Reset link has expired. Please request a new one.'}), 400
+    pw_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+    query('UPDATE ft_users SET password_hash=%s, reset_token=NULL, reset_token_expires=NULL WHERE id=%s',
+          (pw_hash, user['id']), commit=True)
+    return jsonify({'ok': True})
 
 # ── User settings ─────────────────────────────────────────────────────────────
 @app.route('/api/settings', methods=['GET'])
