@@ -291,6 +291,7 @@ window.onerror = function(msg, src, line, col, err) {
       <div class="fg"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" inputmode="email"/></div>
       <div class="fg"><label>Password</label><input type="password" id="login-pw" placeholder="Your password"/></div>
       <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+      <div style="text-align:center;margin:8px 0;"><a onclick="showForgot()" style="font-size:13px;color:var(--muted2);cursor:pointer;text-decoration:underline;">Forgot password?</a></div>
       <button class="btn btn-ghost" onclick="showRegister()">Create free account</button>
       <div class="auth-switch">Don't have an account? <a onclick="showRegister()">Register free</a></div>
     </div>
@@ -380,7 +381,7 @@ window.onerror = function(msg, src, line, col, err) {
     <strong style="color:var(--text)">How to find your rate:</strong> Divide your annual H&R premium by the number of hours you drive for Flex per year. E.g. £500/year ÷ 400hrs = £1.25/hr.
   </div>
   <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
-  <button class="btn btn-g" onclick="doSignOut()" style="margin-top:8px">Sign out</button>
+  <button class="btn btn-primary" onclick="doSignOut()" style="margin-top:8px;background:var(--red);border-color:var(--red);">Sign out</button>
   <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">Signed in as <span id="set-email"></span></p>
 </div>
 </div>
@@ -603,6 +604,52 @@ async function api(method, path, body) {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function showLogin()    { document.getElementById('auth-login').style.display=''; document.getElementById('auth-register').style.display='none'; }
 function showRegister() { document.getElementById('auth-login').style.display='none'; document.getElementById('auth-register').style.display=''; }
+
+function showForgot() {
+  document.getElementById('auth-login').style.display='none';
+  document.getElementById('auth-forgot').style.display='';
+  document.getElementById('forgot-err').textContent='';
+}
+
+function showLogin() {
+  document.querySelectorAll('.auth-wrap').forEach(x=>x.style.display='none');
+  document.getElementById('auth-login').style.display='';
+}
+
+async function doForgot() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const errEl = document.getElementById('forgot-err');
+  errEl.textContent = '';
+  if (!email) { errEl.textContent = 'Please enter your email.'; return; }
+  const btn = event.target; btn.textContent = 'Sending…'; btn.disabled = true;
+  try {
+    await api('POST', '/api/forgot-password', { email }, true);
+    document.getElementById('auth-forgot').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:40px;margin-bottom:16px">📧</div><h3 style="margin-bottom:8px">Check your email</h3><p style="color:var(--muted2);font-size:14px">If an account exists for ' + email + ', we sent a password reset link. Check your inbox.</p><button class="btn btn-ghost" onclick="showLogin()" style="margin-top:20px">Back to sign in</button></div>';
+  } catch(e) {
+    errEl.textContent = e.message || 'Something went wrong. Try again.';
+    btn.textContent = 'Send reset link'; btn.disabled = false;
+  }
+}
+
+async function doReset() {
+  const pw = document.getElementById('reset-pw').value;
+  const pw2 = document.getElementById('reset-pw2').value;
+  const errEl = document.getElementById('reset-err');
+  errEl.textContent = '';
+  if (pw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pw !== pw2) { errEl.textContent = 'Passwords do not match.'; return; }
+  const token = new URLSearchParams(window.location.search).get('reset');
+  const btn = event.target; btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    await api('POST', '/api/reset-password', { token, password: pw }, true);
+    document.getElementById('auth-reset').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:40px;margin-bottom:16px">✅</div><h3 style="margin-bottom:8px">Password updated!</h3><p style="color:var(--muted2);font-size:14px">You can now sign in with your new password.</p><button class="btn btn-primary" onclick="showLogin()" style="margin-top:20px">Sign in</button></div>';
+    // Clean URL
+    window.history.replaceState({}, '', '/app');
+  } catch(e) {
+    errEl.textContent = e.message || 'Reset link expired. Please request a new one.';
+    btn.textContent = 'Set new password'; btn.disabled = false;
+  }
+}
 
 async function doLogin() {
   const email=document.getElementById('login-email').value.trim();
