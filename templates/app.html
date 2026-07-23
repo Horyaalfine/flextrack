@@ -397,10 +397,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="fg-m">
     <label>H&R Insurance rate (£/hr)</label>
     <input type="number" id="set-hr-rate" min="0" max="10" step="0.01" placeholder="1.49" inputmode="decimal"/>
-    <div class="hint">Your actual Hire & Reward insurance cost per hour driven. This varies by insurer — check your policy. Default is £1.49/hr.</div>
-  </div>
-  <div style="background:var(--accent-bg);border:1px solid var(--accent-bd);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--muted2);margin-bottom:16px;">
-    <strong style="color:var(--text)">How to find your rate:</strong> Divide your annual H&R premium by the number of hours you drive for Flex per year. E.g. £500/year ÷ 400hrs = £1.25/hr.
+    <div class="hint">Default is £1.49/hr. Update to match your policy.</div>
   </div>
   <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
   <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
