@@ -539,6 +539,22 @@ def reset_password():
           (pw_hash, user['id']), commit=True)
     return jsonify({'ok': True})
 
+# ── Change password ───────────────────────────────────────────────────────────
+@app.route('/api/change-password', methods=['PUT'])
+@token_required
+def change_password():
+    d = request.json
+    old_pw = d.get('old_password', '')
+    new_pw = d.get('new_password', '')
+    if not old_pw or not new_pw or len(new_pw) < 6:
+        return jsonify({'error': 'Invalid request'}), 400
+    user = query('SELECT password_hash FROM ft_users WHERE id=%s', (g.user_id,), one=True)
+    if not bcrypt.checkpw(old_pw.encode(), user['password_hash'].encode()):
+        return jsonify({'error': 'Current password is incorrect'}), 400
+    new_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+    query('UPDATE ft_users SET password_hash=%s WHERE id=%s', (new_hash, g.user_id), commit=True)
+    return jsonify({'ok': True})
+
 # ── User settings ─────────────────────────────────────────────────────────────
 @app.route('/api/settings', methods=['GET'])
 @token_required
