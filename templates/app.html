@@ -310,6 +310,28 @@ window.onerror = function(msg, src, line, col, err) {
     </div>
   </div>
 
+    <!-- Forgot Password -->
+    <div id="auth-forgot" class="auth-wrap" style="display:none">
+      <div class="auth-logo">Flex<span>Log</span></div>
+      <div class="auth-sub">Reset your password</div>
+      <div class="auth-title">Forgot password?</div>
+      <p style="font-size:13px;color:var(--muted2);margin-bottom:16px;">Enter your email and we'll send you a reset link.</p>
+      <div class="err-box" id="forgot-err"></div>
+      <div class="fg"><label>Email</label><input type="email" id="forgot-email" placeholder="you@example.com" inputmode="email"/></div>
+      <button class="btn btn-primary" onclick="doForgot()">Send reset link</button>
+      <button class="btn btn-ghost" onclick="showLogin()">Back to sign in</button>
+    </div>
+    <!-- Reset Password -->
+    <div id="auth-reset" class="auth-wrap" style="display:none">
+      <div class="auth-logo">Flex<span>Log</span></div>
+      <div class="auth-sub">Choose a new password</div>
+      <div class="auth-title">Reset password</div>
+      <div class="err-box" id="reset-err"></div>
+      <div class="fg"><label>New password</label><input type="password" id="reset-pw" placeholder="At least 6 characters"/></div>
+      <div class="fg"><label>Confirm password</label><input type="password" id="reset-pw2" placeholder="Repeat password"/></div>
+      <button class="btn btn-primary" onclick="doReset()">Set new password</button>
+    </div>
+
   <!-- MAIN APP -->
   <div id="screen-app" style="display:none">
     <div id="trial-bar" class="trial-bar" style="display:none"></div>
