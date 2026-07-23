@@ -1539,6 +1539,13 @@ function exportCSV(){
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+function doSignOut() {
+  token=''; userEmail='';
+  localStorage.removeItem('ft_token');
+  localStorage.removeItem('ft_email');
+  location.reload();
+}
+
 (async()=>{
   // Check for password reset token in URL first
   const urlParams = new URLSearchParams(window.location.search);
