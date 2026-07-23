@@ -696,6 +696,11 @@ async function saveSettings() {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+function showPaywall() {
+  const pm = document.getElementById('paywall-modal');
+  if (pm) pm.style.display = 'block';
+}
+
 let _pwPlan = 'monthly';
 
 function setPwPlan(plan) {
