@@ -393,16 +393,17 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- SETTINGS MODAL -->
 <div class="modal-bg" id="settings-modal" style="display:none" onclick="if(event.target.id==='settings-modal')closeModal('settings-modal')">
 <div class="modal">
-  <div class="modal-hdr"><h2>Settings</h2><button class="modal-close" onclick="closeModal('settings-modal')">✕</button></div>
-  <div class="fg-m">
-    <label>H&R Insurance rate (£/hr)</label>
-    <input type="number" id="set-hr-rate" min="0" max="10" step="0.01" placeholder="1.49" inputmode="decimal"/>
-    <div class="hint">Default is £1.49/hr. Update to match your policy.</div>
-  </div>
-  <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+  <div class="modal-hdr"><h2>Account</h2><button class="modal-close" onclick="closeModal('settings-modal')">✕</button></div>
+  <p style="font-size:13px;color:var(--muted2);margin-bottom:16px;">Signed in as <strong id="set-email"></strong></p>
+  <div style="border-top:1px solid var(--border);margin-bottom:16px;"></div>
+  <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Change password</h3>
+  <div class="err-box" id="chpw-err"></div>
+  <div class="fg-m"><label>Current password</label><input type="password" id="chpw-old" placeholder="Current password"/></div>
+  <div class="fg-m"><label>New password</label><input type="password" id="chpw-new" placeholder="At least 6 characters"/></div>
+  <div class="fg-m"><label>Confirm new password</label><input type="password" id="chpw-new2" placeholder="Repeat new password"/></div>
+  <button class="btn btn-primary" onclick="doChangePassword()">Update password</button>
   <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
   <button class="btn btn-primary" onclick="doSignOut()" style="background:var(--red);border-color:var(--red);width:100%;">🚪 Sign out</button>
-  <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">Signed in as <span id="set-email"></span></p>
 </div>
 </div>
 
@@ -740,9 +741,36 @@ function showUserMenu() {
 
 // ── Load all data ─────────────────────────────────────────────────────────────
 function openSettings() {
-  document.getElementById('set-hr-rate').value = HR_RATE.toFixed(2);
   document.getElementById('set-email').textContent = userEmail || '';
+  document.getElementById('chpw-old').value = '';
+  document.getElementById('chpw-new').value = '';
+  document.getElementById('chpw-new2').value = '';
+  document.getElementById('chpw-err').textContent = '';
   openModal('settings-modal');
+}
+
+async function doChangePassword() {
+  const oldPw = document.getElementById('chpw-old').value;
+  const newPw = document.getElementById('chpw-new').value;
+  const newPw2 = document.getElementById('chpw-new2').value;
+  const errEl = document.getElementById('chpw-err');
+  errEl.textContent = '';
+  if (!oldPw) { errEl.textContent = 'Please enter your current password.'; return; }
+  if (newPw.length < 6) { errEl.textContent = 'New password must be at least 6 characters.'; return; }
+  if (newPw !== newPw2) { errEl.textContent = 'New passwords do not match.'; return; }
+  const btn = event.target; btn.textContent = 'Updating…'; btn.disabled = true;
+  try {
+    await api('PUT', '/api/change-password', { old_password: oldPw, new_password: newPw });
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = '✓ Password updated successfully.';
+    document.getElementById('chpw-old').value = '';
+    document.getElementById('chpw-new').value = '';
+    document.getElementById('chpw-new2').value = '';
+  } catch(e) {
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = e.message || 'Incorrect current password.';
+  }
+  btn.textContent = 'Update password'; btn.disabled = false;
 }
 
 async function saveSettings() {
