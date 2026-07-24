@@ -1460,7 +1460,7 @@ function renderReports() {
       <div class="stat-card"><div class="sv r">−${fmtGBP(totHr)}</div><div class="sl">H&R ins.</div></div>
     </div>
 
-    ${bestSlot && fs.length > 1 ? `<div class="info-box"><strong>Best slot:</strong> ${dayLbl(bestSlot.date)} ${bestSlot.start_time||''}–${bestSlot.end_time||''} → ${fmtGBP(calcSlot(bestSlot).net)} net &nbsp;|&nbsp; <strong>Worst:</strong> ${dayLbl(worstSlot.date)} ${worstSlot.start_time||''}–${worstSlot.end_time||''} → ${fmtGBP(calcSlot(worstSlot).net)} net</div>` : ''}
+    ${bestSlot && filtered.length > 1 ? `<div class="info-box"><strong>Best slot:</strong> ${dayLbl(bestSlot.date)} ${bestSlot.start_time||''}–${bestSlot.end_time||''} → ${fmtGBP(calcSlot(bestSlot).net)} net &nbsp;|&nbsp; <strong>Worst:</strong> ${dayLbl(worstSlot.date)} ${worstSlot.start_time||''}–${worstSlot.end_time||''} → ${fmtGBP(calcSlot(worstSlot).net)} net</div>` : ''}
 
     ${weeks.length > 0 ? `
     <div class="chart-wrap">
