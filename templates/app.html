@@ -332,7 +332,41 @@ window.onerror = function(msg, src, line, col, err) {
       <button class="btn btn-primary" onclick="doReset()">Set new password</button>
     </div>
 
-  <!-- MAIN APP -->
+  <!-- PAYWALL MODAL -->
+<div id="paywall-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:9999;overflow-y:auto;">
+  <div style="max-width:420px;margin:0 auto;padding:40px 24px;text-align:center;">
+    <div style="font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px;">Flex<span style="color:var(--accent)">Log</span></div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Your free trial has ended</p>
+    <div style="background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:28px 24px;">
+      <div class="report-toggle" style="margin-bottom:20px">
+        <button type="button" class="rt-btn active" id="pw-monthly-btn" onclick="setPwPlan('monthly')">Monthly</button>
+        <button type="button" class="rt-btn" id="pw-annual-btn" onclick="setPwPlan('annual')">Annual <span style="color:var(--green);font-size:11px;font-weight:700">Save £7</span></button>
+      </div>
+      <div id="pw-monthly-view">
+        <div style="font-size:52px;font-weight:800;letter-spacing:-2px;color:var(--accent);">£3</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:20px;">per month · cancel anytime</div>
+      </div>
+      <div id="pw-annual-view" style="display:none">
+        <div style="font-size:52px;font-weight:800;letter-spacing:-2px;color:var(--accent);">£29</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:4px;">per year · save £7 vs monthly</div>
+        <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:16px;">That's just £2.42/month</div>
+      </div>
+      <ul style="list-style:none;text-align:left;margin-bottom:20px;">
+        <li style="padding:7px 0;font-size:14px;border-bottom:1px solid var(--border);color:var(--muted2);">✓ Unlimited slot logging</li>
+        <li style="padding:7px 0;font-size:14px;border-bottom:1px solid var(--border);color:var(--muted2);">✓ H&R insurance auto-calculated</li>
+        <li style="padding:7px 0;font-size:14px;border-bottom:1px solid var(--border);color:var(--muted2);">✓ HMRC SA103 annual report</li>
+        <li style="padding:7px 0;font-size:14px;border-bottom:1px solid var(--border);color:var(--muted2);">✓ Universal Credit monthly report</li>
+        <li style="padding:7px 0;font-size:14px;border-bottom:1px solid var(--border);color:var(--muted2);">✓ Actual cash profit report</li>
+        <li style="padding:7px 0;font-size:14px;color:var(--muted2);">✓ CSV & PDF export</li>
+      </ul>
+      <button class="btn btn-primary" id="pw-subscribe-btn" onclick="startCheckout()" style="width:100%;font-size:15px;">Subscribe — £3/month</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;">Secure payment via Stripe · No contracts · Cancel anytime</p>
+    </div>
+    <button onclick="doSignOut()" style="margin-top:16px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;">Sign out</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
   <div id="screen-app" style="display:none">
     <div id="trial-bar" class="trial-bar" style="display:none"></div>
     <div class="topbar">
@@ -707,23 +741,25 @@ async function doRegister() {
 function checkSubscription(r) {
   const status = r.status || r.subscription_status;
   const daysLeft = r.trial_days_left;
-  document.getElementById('paywall-wrap').style.display = 'none';
-  document.getElementById('app-wrap').style.display = '';
+  const pm = document.getElementById('paywall-modal');
   if (status === 'expired' || (status === 'trial' && daysLeft <= 0)) {
-    // Show expired banner but keep app visible in read-only mode
+    // Show full paywall modal
     window._trialExpired = true;
+    if (pm) pm.style.display = 'block';
+    document.getElementById('screen-app').style.display = 'none';
+    return false;
+  }
+  // Active trial or subscriber
+  window._trialExpired = false;
+  if (pm) pm.style.display = 'none';
+  document.getElementById('screen-app').style.display = '';
+  if (status === 'trial' && daysLeft > 0) {
     const tb = document.getElementById('trial-bar');
     if (tb) {
-      tb.style.background = 'var(--red)';
-      tb.style.color = '#fff';
-      tb.innerHTML = '⚠️ Your trial has expired. <a href="#" onclick="startCheckout();return false;" style="color:#fff;font-weight:700;text-decoration:underline;">Subscribe for £3/month to continue →</a>';
+      tb.style.background = '';
+      tb.style.color = '';
+      tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining';
       tb.style.display = 'block';
-    }
-  } else {
-    window._trialExpired = false;
-    if (status === 'trial' && daysLeft > 0) {
-      const tb = document.getElementById('trial-bar');
-      if (tb) { tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining'; tb.style.display = 'block'; }
     }
   }
   return true;
