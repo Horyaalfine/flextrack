@@ -753,7 +753,7 @@ function checkSubscription(r) {
     if (tb) {
       tb.style.background = '#c0392b';
       tb.style.color = '#fff';
-      tb.innerHTML = '⚠️ Your free trial has ended. ​<span style="color:#fff;font-weight:700;text-decoration:underline;cursor:pointer;">Subscribe to unlock →</span>';
+      tb.innerHTML = "<span>⚠️ Your free trial has ended.</span> <span id=\"expired-cta\" style=\"color:#fff;font-weight:700;text-decoration:underline;cursor:pointer;\">Subscribe to unlock →</span>";
       tb.style.display = 'block';
     }
     return false;
@@ -1614,16 +1614,13 @@ function doSignOut() {
 // ── Expired trial click interceptor ──────────────────────────────────────────
 document.addEventListener('click', function(e) {
   if (!window._trialExpired) return;
-  // Allow interaction inside the paywall modal itself
+  // Allow clicks inside the paywall modal itself
   if (e.target.closest && e.target.closest('#paywall-modal')) return;
-  // Intercept any interactive element
-  const hit = e.target.closest('button, a, input, select, textarea, [onclick], [role="button"], .nav-item, .tab, label');
-  if (hit) {
-    e.preventDefault();
-    e.stopPropagation();
-    const pm = document.getElementById('paywall-modal');
-    if (pm) pm.style.display = 'block';
-  }
+  // Show paywall on any click anywhere in the app
+  e.preventDefault();
+  e.stopPropagation();
+  const pm = document.getElementById('paywall-modal');
+  if (pm) pm.style.display = 'block';
 }, true);
 </script>
 </body>
