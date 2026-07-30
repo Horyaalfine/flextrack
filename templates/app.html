@@ -753,7 +753,7 @@ function checkSubscription(r) {
     if (tb) {
       tb.style.background = '#c0392b';
       tb.style.color = '#fff';
-      tb.innerHTML = '⚠️ Your free trial has ended. <a href="#" onclick="event.preventDefault();document.getElementById('paywall-modal').style.display='block';" style="color:#fff;font-weight:700;text-decoration:underline;">Subscribe to unlock →</a>';
+      tb.innerHTML = '⚠️ Your free trial has ended. ​<span style="color:#fff;font-weight:700;text-decoration:underline;cursor:pointer;">Subscribe to unlock →</span>';
       tb.style.display = 'block';
     }
     return false;
