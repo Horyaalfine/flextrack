@@ -137,6 +137,9 @@ def init_db():
         ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP
     """)
     cur.execute("""
+        ALTER TABLE ft_users ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS ft_expenses (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES ft_users(id) ON DELETE CASCADE,
@@ -197,18 +200,22 @@ def send_email(to_email, subject, body_text):
     smtp_user = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
     smtp_pass = os.environ.get('SMTP_PASS', '')
     if not smtp_pass:
-        print(f'SMTP_PASS not set, skipping email to {to_email}')
+        print(f'[EMAIL] SMTP_PASS not set — skipping email to {to_email}')
         return False
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f'FlexLog <{smtp_user}>'
-    msg['To'] = to_email
-    msg.attach(MIMEText(body_text, 'plain'))
-    with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
-        s.login(smtp_user, smtp_pass)
-        s.send_message(msg)
-    print(f'Email sent to {to_email}: {subject}')
-    return True
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f'FlexLog <{smtp_user}>'
+        msg['To'] = to_email
+        msg.attach(MIMEText(body_text, 'plain'))
+        with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
+            s.login(smtp_user, smtp_pass)
+            s.send_message(msg)
+        print(f'[EMAIL] Sent to {to_email}: {subject}')
+        return True
+    except Exception as e:
+        print(f'[EMAIL] FAILED to {to_email}: {e}')
+        return False
 
 def send_admin_notification(user_email, event):
     admin = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
@@ -216,6 +223,31 @@ def send_admin_notification(user_email, event):
         admin,
         f'FlexLog: {event} — {user_email}',
         f'{event}\n\nUser: {user_email}\nTime: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}'
+    )
+
+def send_subscriber_confirmation(user_email, renewal_date=None):
+    renewal_str = renewal_date.strftime('%d %B %Y') if renewal_date else 'next month'
+    send_email(
+        user_email,
+        'Welcome to FlexLog — subscription confirmed',
+        f"""Hi,
+
+Your FlexLog subscription is now active. Thank you for subscribing!
+
+Your next renewal date is: {renewal_str}
+
+You now have full access to:
+  - Unlimited slot logging
+  - H&R insurance auto-calculated
+  - HMRC SA103 annual report
+  - Universal Credit monthly report
+  - CSV & PDF export
+
+If you have any questions, reply to this email or contact support@flexlog.co.uk
+
+The FlexLog Team
+https://flexlog.co.uk
+"""
     )
 
 # ── Helper: auto-expire trial ──────────────────────────────────────────────────
@@ -337,6 +369,7 @@ def me():
     status = maybe_expire_trial(user)
     trial_ends = user['trial_ends_at']
     days_left = (trial_ends.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days if trial_ends else 0
+    sub_end = user.get('subscription_end_date')
     return jsonify({
         'id': user['id'],
         'email': user['email'],
@@ -344,6 +377,7 @@ def me():
         'status': status,
         'trial_ends_at': trial_ends.isoformat() if trial_ends else None,
         'trial_days_left': max(0, days_left),
+        'subscription_end_date': sub_end.isoformat() if sub_end else None,
         'hr_rate': float(user['hr_rate'] or 1.49),
         'created_at': user['created_at'].isoformat() if user['created_at'] else None,
     })
@@ -657,22 +691,38 @@ def stripe_webhook():
         customer_id = session.get('customer')
         subscription_id = session.get('subscription')
         if customer_id:
-            query('UPDATE ft_users SET subscription_status=%s, stripe_subscription_id=%s WHERE stripe_customer_id=%s',
-                  ('active', subscription_id, customer_id), commit=True)
-            # Admin notification
+            # Fetch renewal date from Stripe subscription
+            renewal_date = None
+            try:
+                if subscription_id:
+                    sub = stripe.Subscription.retrieve(subscription_id)
+                    period_end = sub.get('current_period_end')
+                    if period_end:
+                        renewal_date = datetime.utcfromtimestamp(period_end)
+            except Exception as se:
+                print(f'Stripe sub fetch failed: {se}')
+            query('UPDATE ft_users SET subscription_status=%s, stripe_subscription_id=%s, subscription_end_date=%s WHERE stripe_customer_id=%s',
+                  ('active', subscription_id, renewal_date, customer_id), commit=True)
             u = query('SELECT email FROM ft_users WHERE stripe_customer_id=%s', (customer_id,), one=True)
             if u:
                 try:
                     send_admin_notification(u['email'], 'New subscription activated')
                 except Exception as ne:
                     print(f'Admin notify failed: {ne}')
+                try:
+                    send_subscriber_confirmation(u['email'], renewal_date)
+                except Exception as ne:
+                    print(f'Subscriber confirmation failed: {ne}')
 
     elif event['type'] == 'invoice.payment_succeeded':
         sub_id = event['data']['object'].get('subscription')
         if sub_id:
-            query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
-                  ('active', sub_id), commit=True)
-            # Admin notification (renewal — skip first invoice to avoid double-notif with checkout.session.completed)
+            # Store renewal date from invoice period_end
+            period_end = event['data']['object'].get('lines', {}).get('data', [{}])[0].get('period', {}).get('end') \
+                         or event['data']['object'].get('period_end')
+            renewal_date = datetime.utcfromtimestamp(period_end) if period_end else None
+            query('UPDATE ft_users SET subscription_status=%s, subscription_end_date=%s WHERE stripe_subscription_id=%s',
+                  ('active', renewal_date, sub_id), commit=True)
             billing_reason = event['data']['object'].get('billing_reason', '')
             if billing_reason == 'subscription_cycle':
                 u = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)

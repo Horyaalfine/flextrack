@@ -764,6 +764,15 @@ function checkSubscription(r) {
       tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining';
       tb.style.display = 'block';
     }
+  } else if (status === 'active') {
+    if (tb) {
+      const endDate = r.subscription_end_date ? new Date(r.subscription_end_date) : null;
+      const renewal = endDate ? endDate.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : null;
+      tb.style.background = '#1a7f4b';
+      tb.style.color = '#fff';
+      tb.textContent = renewal ? '✓ Subscribed — renews ' + renewal : '✓ Active subscription';
+      tb.style.display = 'block';
+    }
   }
   return true;
 }
