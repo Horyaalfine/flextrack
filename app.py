@@ -817,6 +817,7 @@ def admin_dashboard():
                 "FROM ft_users ORDER BY created_at DESC LIMIT 20"
             ) or []
         except Exception:
+            get_db().rollback()  # clear aborted transaction before retrying
             recent = query(
                 "SELECT email, subscription_status, created_at, trial_ends_at "
                 "FROM ft_users ORDER BY created_at DESC LIMIT 20"
