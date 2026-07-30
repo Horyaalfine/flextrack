@@ -793,6 +793,100 @@ def customer_portal():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ── Admin dashboard ────────────────────────────────────────────────────────────
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'flexlog-admin-2024')
+
+@app.route('/admin')
+def admin_dashboard():
+    token = request.args.get('token', '')
+    if token != ADMIN_TOKEN:
+        return '<h2>401 Unauthorised</h2><p>Add ?token=YOUR_ADMIN_TOKEN to the URL.</p>', 401
+
+    # Counts by status
+    counts = query('SELECT subscription_status, COUNT(*) as cnt FROM ft_users GROUP BY subscription_status')
+    status_map = {r['subscription_status']: r['cnt'] for r in (counts or [])}
+    total       = sum(status_map.values())
+    active      = status_map.get('active', 0)
+    trial       = status_map.get('trial', 0)
+    expired     = status_map.get('expired', 0)
+    mrr         = active * 3  # £3/month per subscriber
+
+    # Recent 20 users
+    recent = query(
+        "SELECT email, subscription_status, created_at, trial_ends_at, subscription_end_date "
+        "FROM ft_users ORDER BY created_at DESC LIMIT 20"
+    ) or []
+
+    def badge(s):
+        colours = {'active': '#1a7f4b', 'trial': '#b45309', 'expired': '#c0392b'}
+        return f'<span style="background:{colours.get(s,"#888")};color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">{s.upper()}</span>'
+
+    def fmt(dt):
+        return dt.strftime('%d %b %Y') if dt else '—'
+
+    rows = ''
+    for u in recent:
+        rows += f'''<tr>
+            <td>{u["email"]}</td>
+            <td>{badge(u["subscription_status"])}</td>
+            <td>{fmt(u["created_at"])}</td>
+            <td>{fmt(u["trial_ends_at"])}</td>
+            <td>{fmt(u["subscription_end_date"])}</td>
+        </tr>'''
+
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlexLog Admin</title>
+<style>
+  body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f4f6f9;color:#1a1a2e}}
+  header{{background:#1a1a2e;color:#fff;padding:18px 32px;display:flex;align-items:center;gap:12px}}
+  header h1{{margin:0;font-size:20px}}
+  .sub{{color:#aaa;font-size:13px}}
+  .cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;padding:28px 32px 0}}
+  .card{{background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
+  .card .val{{font-size:36px;font-weight:700;margin:4px 0}}
+  .card .lbl{{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.5px}}
+  .card.green .val{{color:#1a7f4b}}
+  .card.amber .val{{color:#b45309}}
+  .card.red .val{{color:#c0392b}}
+  .card.blue .val{{color:#1d4ed8}}
+  section{{margin:28px 32px}}
+  h2{{font-size:15px;font-weight:600;margin-bottom:12px;color:#444}}
+  table{{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
+  th{{background:#f8f9fb;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#666;padding:10px 14px;text-align:left;border-bottom:1px solid #eee}}
+  td{{padding:10px 14px;font-size:13px;border-bottom:1px solid #f0f0f0}}
+  tr:last-child td{{border:none}}
+  .refresh{{font-size:12px;color:#888;margin-left:auto}}
+</style>
+</head>
+<body>
+<header>
+  <h1>FlexLog Admin</h1>
+  <span class="refresh">Last updated: {datetime.now(timezone.utc).strftime("%d %b %Y %H:%M UTC")}</span>
+</header>
+<div class="cards">
+  <div class="card"><div class="lbl">Total Users</div><div class="val">{total}</div></div>
+  <div class="card green"><div class="lbl">Active Subscribers</div><div class="val">{active}</div></div>
+  <div class="card amber"><div class="lbl">Active Trials</div><div class="val">{trial}</div></div>
+  <div class="card red"><div class="lbl">Expired</div><div class="val">{expired}</div></div>
+  <div class="card blue"><div class="lbl">MRR (est.)</div><div class="val">£{mrr}</div></div>
+</div>
+<section>
+  <h2>Recent Users</h2>
+  <table>
+    <thead><tr>
+      <th>Email</th><th>Status</th><th>Signed Up</th><th>Trial Ends</th><th>Renews</th>
+    </tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+</section>
+</body>
+</html>'''
+    return html
+
 if __name__ == '__main__':
     if DATABASE_URL:
         init_db()
