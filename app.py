@@ -291,15 +291,29 @@ def login():
 @app.route('/api/me', methods=['GET'])
 @token_required
 def me():
-    user = query('SELECT id, email, created_at, trial_ends_at, subscription_status FROM ft_users WHERE id=%s',
+    user = query('SELECT id, email, created_at, trial_ends_at, subscription_status, hr_rate, stripe_customer_id, stripe_subscription_id FROM ft_users WHERE id=%s',
                  (g.user_id,), one=True)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     trial_ends = user['trial_ends_at']
-    days_left = (trial_ends.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days if trial_ends else 0
-    return jsonify({**dict(user), 'trial_days_left': max(0, days_left), 'hr_rate': float(user.get('hr_rate') or 1.49),
-                    'trial_ends_at': trial_ends.isoformat() if trial_ends else None,
-                    'created_at': user['created_at'].isoformat() if user['created_at'] else None})
+    now = datetime.now(timezone.utc)
+    days_left = max(0, (trial_ends.replace(tzinfo=timezone.utc) - now).days) if trial_ends else 0
+    # Auto-expire trial if days_left is 0 and still showing as trial
+    status = user['subscription_status']
+    if status == 'trial' and trial_ends and trial_ends.replace(tzinfo=timezone.utc) < now:
+        status = 'expired'
+        query('UPDATE ft_users SET subscription_status=%s WHERE id=%s', ('expired', g.user_id), commit=True)
+    return jsonify({
+        'id': user['id'],
+        'email': user['email'],
+        'status': status,
+        'subscription_status': status,
+        'trial_days_left': days_left,
+        'hr_rate': float(user['hr_rate'] or 1.49),
+        'trial_ends_at': trial_ends.isoformat() if trial_ends else None,
+        'created_at': user['created_at'].isoformat() if user['created_at'] else None,
+        'has_subscription': bool(user['stripe_subscription_id'])
+    })
 
 # ── Slots ──────────────────────────────────────────────────────────────────────
 @app.route('/api/slots', methods=['GET'])
