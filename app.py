@@ -798,24 +798,33 @@ ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'flexlog-admin-2024')
 
 @app.route('/admin')
 def admin_dashboard():
-    token = request.args.get('token', '')
-    if token != ADMIN_TOKEN:
-        return '<h2>401 Unauthorised</h2><p>Add ?token=YOUR_ADMIN_TOKEN to the URL.</p>', 401
+    try:
+        token = request.args.get('token', '')
+        if token != ADMIN_TOKEN:
+            return '<h2>401 Unauthorised</h2><p>Add ?token=YOUR_ADMIN_TOKEN to the URL.</p>', 401
 
-    # Counts by status
-    counts = query('SELECT subscription_status, COUNT(*) as cnt FROM ft_users GROUP BY subscription_status')
-    status_map = {r['subscription_status']: r['cnt'] for r in (counts or [])}
-    total       = sum(status_map.values())
-    active      = status_map.get('active', 0)
-    trial       = status_map.get('trial', 0)
-    expired     = status_map.get('expired', 0)
-    mrr         = active * 3  # £3/month per subscriber
+        # Counts by status
+        counts = query('SELECT subscription_status, COUNT(*) as cnt FROM ft_users GROUP BY subscription_status')
+        status_map = {r['subscription_status']: r['cnt'] for r in (counts or [])}
+        total       = sum(status_map.values())
+        active      = status_map.get('active', 0)
+        trial       = status_map.get('trial', 0)
+        expired     = status_map.get('expired', 0)
+        mrr         = active * 3  # £3/month per subscriber
 
-    # Recent 20 users
-    recent = query(
-        "SELECT email, subscription_status, created_at, trial_ends_at, subscription_end_date "
-        "FROM ft_users ORDER BY created_at DESC LIMIT 20"
-    ) or []
+        # Recent 20 users — fall back if subscription_end_date column missing
+        try:
+            recent = query(
+                "SELECT email, subscription_status, created_at, trial_ends_at, subscription_end_date "
+                "FROM ft_users ORDER BY created_at DESC LIMIT 20"
+            ) or []
+        except Exception:
+            recent = query(
+                "SELECT email, subscription_status, created_at, trial_ends_at "
+                "FROM ft_users ORDER BY created_at DESC LIMIT 20"
+            ) or []
+            for r in recent:
+                r['subscription_end_date'] = None
 
     def badge(s):
         colours = {'active': '#1a7f4b', 'trial': '#b45309', 'expired': '#c0392b'}
@@ -885,7 +894,10 @@ def admin_dashboard():
 </section>
 </body>
 </html>'''
-    return html
+        return html
+    except Exception as e:
+        import traceback
+        return f'<pre style="padding:20px;color:red">Admin error:\n{traceback.format_exc()}</pre>', 500
 
 if __name__ == '__main__':
     if DATABASE_URL:
