@@ -36,7 +36,6 @@ DATABASE_URL = os.environ.get('DATABASE_URL', '')
 def get_db():
     if 'db' not in g:
         url = DATABASE_URL
-        # Railway sometimes provides postgres:// instead of postgresql://
         if url.startswith('postgres://'):
             url = url.replace('postgres://', 'postgresql://', 1)
         g.db = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
@@ -96,9 +95,7 @@ def init_db():
             subscription_status VARCHAR(50) DEFAULT 'trial',
             stripe_customer_id VARCHAR(255),
             stripe_subscription_id VARCHAR(255),
-            hr_rate NUMERIC(5,2) DEFAULT 1.49,
-            reset_token VARCHAR(255),
-            reset_token_expires TIMESTAMP
+            hr_rate NUMERIC(5,2) DEFAULT 1.49
         )
     """)
     cur.execute("""
@@ -190,6 +187,49 @@ def health():
         db_ok = False
     return jsonify({'status': 'ok', 'db': db_ok, 'app': 'FlexTrack'})
 
+# ── Email helpers ─────────────────────────────────────────────────────────────
+def send_email(to_email, subject, body_text):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    smtp_host = os.environ.get('SMTP_HOST', 'mail.privateemail.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', 465))
+    smtp_user = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
+    smtp_pass = os.environ.get('SMTP_PASS', '')
+    if not smtp_pass:
+        print(f'SMTP_PASS not set, skipping email to {to_email}')
+        return False
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = f'FlexLog <{smtp_user}>'
+    msg['To'] = to_email
+    msg.attach(MIMEText(body_text, 'plain'))
+    with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
+        s.login(smtp_user, smtp_pass)
+        s.send_message(msg)
+    print(f'Email sent to {to_email}: {subject}')
+    return True
+
+def send_admin_notification(user_email, event):
+    admin = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
+    send_email(
+        admin,
+        f'FlexLog: {event} — {user_email}',
+        f'{event}\n\nUser: {user_email}\nTime: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}'
+    )
+
+# ── Helper: auto-expire trial ──────────────────────────────────────────────────
+def maybe_expire_trial(user):
+    """If user is on trial and it has ended, flip status to expired in DB and return updated status."""
+    status = user['subscription_status']
+    trial_ends = user['trial_ends_at']
+    if status == 'trial' and trial_ends:
+        if trial_ends.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            query('UPDATE ft_users SET subscription_status=%s WHERE id=%s',
+                  ('expired', user['id']), commit=True)
+            status = 'expired'
+    return status
+
 # ── Auth routes ────────────────────────────────────────────────────────────────
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -213,7 +253,6 @@ def register():
             'user_id': user['id'],
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
-        # Send welcome email to new driver
         try:
             welcome_lines = [
                 "Hi there,",
@@ -247,15 +286,13 @@ def register():
                 "FlexLog -- flexlog.co.uk",
                 "support@flexlog.co.uk"
             ]
-            welcome_body = "\n".join(welcome_lines)
-            send_email(email, "Welcome to FlexLog -- here is how to get started", welcome_body)
+            send_email(email, "Welcome to FlexLog -- here is how to get started", "\n".join(welcome_lines))
         except Exception as ne:
             print(f'Welcome email failed: {ne}')
-                # Send notification email to admin
         try:
             send_admin_notification(email, 'New trial signup')
         except Exception as ne:
-            print(f'Notification email failed: {ne}')
+            print(f'Admin notification failed: {ne}')
         return jsonify({'token': token, 'email': email, 'status': 'trial',
                         'trial_ends_at': user['trial_ends_at'].isoformat(),
                         'trial_days_left': 7})
@@ -278,10 +315,12 @@ def login():
             'user_id': user['id'],
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
+        # Auto-expire trial if ended
+        status = maybe_expire_trial(user)
         trial_ends = user['trial_ends_at']
         days_left = (trial_ends.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days if trial_ends else 0
         return jsonify({'token': token, 'email': email,
-                        'status': user['subscription_status'],
+                        'status': status,
                         'trial_ends_at': trial_ends.isoformat() if trial_ends else None,
                         'trial_days_left': max(0, days_left)})
     except Exception as e:
@@ -291,29 +330,97 @@ def login():
 @app.route('/api/me', methods=['GET'])
 @token_required
 def me():
-    user = query('SELECT id, email, created_at, trial_ends_at, subscription_status, hr_rate, stripe_customer_id, stripe_subscription_id FROM ft_users WHERE id=%s',
-                 (g.user_id,), one=True)
+    user = query('SELECT * FROM ft_users WHERE id=%s', (g.user_id,), one=True)
     if not user:
         return jsonify({'error': 'User not found'}), 404
+    # Auto-expire trial if ended
+    status = maybe_expire_trial(user)
     trial_ends = user['trial_ends_at']
-    now = datetime.now(timezone.utc)
-    days_left = max(0, (trial_ends.replace(tzinfo=timezone.utc) - now).days) if trial_ends else 0
-    # Auto-expire trial if days_left is 0 and still showing as trial
-    status = user['subscription_status']
-    if status == 'trial' and trial_ends and trial_ends.replace(tzinfo=timezone.utc) < now:
-        status = 'expired'
-        query('UPDATE ft_users SET subscription_status=%s WHERE id=%s', ('expired', g.user_id), commit=True)
+    days_left = (trial_ends.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days if trial_ends else 0
     return jsonify({
         'id': user['id'],
         'email': user['email'],
-        'status': status,
         'subscription_status': status,
-        'trial_days_left': days_left,
-        'hr_rate': float(user['hr_rate'] or 1.49),
+        'status': status,
         'trial_ends_at': trial_ends.isoformat() if trial_ends else None,
+        'trial_days_left': max(0, days_left),
+        'hr_rate': float(user['hr_rate'] or 1.49),
         'created_at': user['created_at'].isoformat() if user['created_at'] else None,
-        'has_subscription': bool(user['stripe_subscription_id'])
     })
+
+# ── Password reset ─────────────────────────────────────────────────────────────
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    try:
+        data = request.json or {}
+        email = (data.get('email') or '').strip().lower()
+        if not email:
+            return jsonify({'error': 'Email required'}), 400
+        user = query('SELECT id FROM ft_users WHERE email=%s', (email,), one=True)
+        if user:
+            import secrets
+            token = secrets.token_urlsafe(32)
+            expires = datetime.now(timezone.utc) + timedelta(hours=2)
+            query('UPDATE ft_users SET reset_token=%s, reset_token_expires=%s WHERE id=%s',
+                  (token, expires, user['id']), commit=True)
+            reset_url = f'https://flexlog.co.uk/app?reset={token}'
+            body = (f"Hi,\n\nYou requested a password reset for your FlexLog account.\n\n"
+                    f"Click this link to reset your password (valid for 2 hours):\n{reset_url}\n\n"
+                    f"If you didn't request this, ignore this email.\n\nFlexLog\nsupport@flexlog.co.uk")
+            try:
+                send_email(email, 'Reset your FlexLog password', body)
+            except Exception as e:
+                print(f'Reset email failed: {e}')
+        # Always return success to prevent email enumeration
+        return jsonify({'ok': True})
+    except Exception as e:
+        print(f'Forgot password error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    try:
+        data = request.json or {}
+        token = data.get('token', '')
+        new_password = data.get('password', '')
+        if not token or not new_password:
+            return jsonify({'error': 'Token and password required'}), 400
+        if len(new_password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        user = query('SELECT id, reset_token_expires FROM ft_users WHERE reset_token=%s', (token,), one=True)
+        if not user:
+            return jsonify({'error': 'Invalid or expired reset link'}), 400
+        expires = user['reset_token_expires']
+        if not expires or expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            return jsonify({'error': 'Reset link has expired'}), 400
+        pw_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+        query('UPDATE ft_users SET password_hash=%s, reset_token=NULL, reset_token_expires=NULL WHERE id=%s',
+              (pw_hash, user['id']), commit=True)
+        return jsonify({'ok': True})
+    except Exception as e:
+        print(f'Reset password error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/change-password', methods=['POST'])
+@token_required
+def change_password():
+    try:
+        data = request.json or {}
+        current = data.get('current_password', '')
+        new_pw = data.get('new_password', '')
+        if not current or not new_pw:
+            return jsonify({'error': 'Current and new password required'}), 400
+        if len(new_pw) < 8:
+            return jsonify({'error': 'New password must be at least 8 characters'}), 400
+        user = query('SELECT password_hash FROM ft_users WHERE id=%s', (g.user_id,), one=True)
+        if not user or not bcrypt.checkpw(current.encode(), user['password_hash'].encode()):
+            return jsonify({'error': 'Current password is incorrect'}), 401
+        pw_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+        query('UPDATE ft_users SET password_hash=%s WHERE id=%s', (pw_hash, g.user_id), commit=True)
+        return jsonify({'ok': True})
+    except Exception as e:
+        print(f'Change password error: {e}')
+        return jsonify({'error': str(e)}), 500
 
 # ── Slots ──────────────────────────────────────────────────────────────────────
 @app.route('/api/slots', methods=['GET'])
@@ -427,36 +534,6 @@ def delete_return(ret_id):
     query('DELETE FROM ft_returns WHERE id=%s AND user_id=%s', (ret_id, g.user_id), commit=True)
     return jsonify({'ok': True})
 
-# ── Email helpers ─────────────────────────────────────────────────────────────
-def send_email(to_email, subject, body_text):
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    smtp_host = os.environ.get('SMTP_HOST', 'mail.privateemail.com')
-    smtp_port = int(os.environ.get('SMTP_PORT', 465))
-    smtp_user = os.environ.get('SMTP_USER', 'support@flexlog.co.uk')
-    smtp_pass = os.environ.get('SMTP_PASS', '')
-    if not smtp_pass:
-        print(f'SMTP_PASS not set, skipping email to {to_email}')
-        return False
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f'FlexLog <{smtp_user}>'
-    msg['To'] = to_email
-    msg.attach(MIMEText(body_text, 'plain'))
-    with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
-        s.login(smtp_user, smtp_pass)
-        s.send_message(msg)
-    print(f'Email sent to {to_email}: {subject}')
-    return True
-
-def send_admin_notification(user_email, event):
-    send_email(
-        os.environ.get('SMTP_USER', 'support@flexlog.co.uk'),
-        f'FlexLog: {event} -- {user_email}',
-        f'{event}\n\nUser: {user_email}\nTime: {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}'
-    )
-
 # ── Trial reminder job ─────────────────────────────────────────────────────────
 @app.route('/api/internal/send-trial-reminders', methods=['POST'])
 def send_trial_reminders():
@@ -505,70 +582,6 @@ def send_trial_reminders():
         print(f'Trial reminder error: {e}')
         return jsonify({'error': str(e)}), 500
 
-# ── Password reset ────────────────────────────────────────────────────────────
-import secrets
-
-@app.route('/api/forgot-password', methods=['POST'])
-def forgot_password():
-    email = request.json.get('email', '').strip().lower()
-    if not email:
-        return jsonify({'error': 'Email required'}), 400
-    user = query('SELECT id, email FROM ft_users WHERE email=%s', (email,), one=True)
-    if not user:
-        # Don't reveal if email exists or not
-        return jsonify({'ok': True})
-    token = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(hours=1)
-    query('''UPDATE ft_users SET reset_token=%s, reset_token_expires=%s WHERE id=%s''',
-          (token, expires, user['id']), commit=True)
-    reset_url = f"https://flexlog.co.uk/app?reset={token}"
-    body = (
-        f"Hi there,\n\n"
-        f"You requested a password reset for your FlexLog account.\n\n"
-        f"Click the link below to reset your password (valid for 1 hour):\n\n"
-        f"{reset_url}\n\n"
-        f"If you didn't request this, ignore this email.\n\n"
-        f"The FlexLog Team\nsupport@flexlog.co.uk"
-    )
-    try:
-        send_email(email, 'Reset your FlexLog password', body)
-    except Exception as e:
-        print(f'Reset email error: {e}')
-    return jsonify({'ok': True})
-
-@app.route('/api/reset-password', methods=['POST'])
-def reset_password():
-    token = request.json.get('token', '')
-    new_pw = request.json.get('password', '')
-    if not token or not new_pw or len(new_pw) < 6:
-        return jsonify({'error': 'Invalid request'}), 400
-    user = query(
-        'SELECT id FROM ft_users WHERE reset_token=%s AND reset_token_expires > NOW()',
-        (token,), one=True
-    )
-    if not user:
-        return jsonify({'error': 'Reset link has expired. Please request a new one.'}), 400
-    pw_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
-    query('UPDATE ft_users SET password_hash=%s, reset_token=NULL, reset_token_expires=NULL WHERE id=%s',
-          (pw_hash, user['id']), commit=True)
-    return jsonify({'ok': True})
-
-# ── Change password ───────────────────────────────────────────────────────────
-@app.route('/api/change-password', methods=['PUT'])
-@token_required
-def change_password():
-    d = request.json
-    old_pw = d.get('old_password', '')
-    new_pw = d.get('new_password', '')
-    if not old_pw or not new_pw or len(new_pw) < 6:
-        return jsonify({'error': 'Invalid request'}), 400
-    user = query('SELECT password_hash FROM ft_users WHERE id=%s', (g.user_id,), one=True)
-    if not bcrypt.checkpw(old_pw.encode(), user['password_hash'].encode()):
-        return jsonify({'error': 'Current password is incorrect'}), 400
-    new_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
-    query('UPDATE ft_users SET password_hash=%s WHERE id=%s', (new_hash, g.user_id), commit=True)
-    return jsonify({'ok': True})
-
 # ── User settings ─────────────────────────────────────────────────────────────
 @app.route('/api/settings', methods=['GET'])
 @token_required
@@ -593,7 +606,7 @@ def stripe_config():
     return jsonify({
         'publishable_key': STRIPE_PUBLISHABLE_KEY,
         'price_id': STRIPE_PRICE_ID,
-        'annual_price_id': STRIPE_ANNUAL_PRICE_ID
+        'annual_price_id': STRIPE_ANNUAL_PRICE_ID,
     })
 
 @app.route('/api/stripe/create-checkout', methods=['POST'])
@@ -601,17 +614,17 @@ def stripe_config():
 def create_checkout():
     try:
         user = query('SELECT * FROM ft_users WHERE id=%s', (g.user_id,), one=True)
-        # Get or create Stripe customer
         if user['stripe_customer_id']:
             customer_id = user['stripe_customer_id']
         else:
             customer = stripe.Customer.create(email=user['email'], metadata={'user_id': g.user_id})
             customer_id = customer.id
             query('UPDATE ft_users SET stripe_customer_id=%s WHERE id=%s', (customer_id, g.user_id), commit=True)
-        
-        base_url = request.json.get('base_url', 'https://flexlog.co.uk')
-        plan = request.json.get('plan', 'monthly')
-        price_id = STRIPE_ANNUAL_PRICE_ID if plan == 'annual' else STRIPE_PRICE_ID
+
+        data = request.json or {}
+        base_url = data.get('base_url', 'https://flexlog.co.uk')
+        price_id = data.get('price_id', STRIPE_PRICE_ID)
+
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=['card'],
@@ -638,7 +651,7 @@ def stripe_webhook():
             event = stripe.Event.construct_from(request.json, stripe.api_key)
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-    
+
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         customer_id = session.get('customer')
@@ -646,58 +659,53 @@ def stripe_webhook():
         if customer_id:
             query('UPDATE ft_users SET subscription_status=%s, stripe_subscription_id=%s WHERE stripe_customer_id=%s',
                   ('active', subscription_id, customer_id), commit=True)
-            user = query('SELECT email FROM ft_users WHERE stripe_customer_id=%s', (customer_id,), one=True)
-            if user:
+            # Admin notification
+            u = query('SELECT email FROM ft_users WHERE stripe_customer_id=%s', (customer_id,), one=True)
+            if u:
                 try:
-                    send_admin_notification(user['email'], '🎉 New subscriber — payment confirmed')
-                    send_email(user['email'], 'Welcome to FlexLog — subscription confirmed',
-                        'Hi there,\n\nYour FlexLog subscription is now active.\n\n'
-                        'You have full access to all features including HMRC reports, Universal Credit monthly figures, and real cash profit tracking.\n\n'
-                        'Log in at https://flexlog.co.uk/app\n\n'
-                        'Thank you for subscribing!\n\nThe FlexLog Team\nsupport@flexlog.co.uk')
-                except Exception as e:
-                    print(f'Webhook email error: {e}')
-    
+                    send_admin_notification(u['email'], 'New subscription activated')
+                except Exception as ne:
+                    print(f'Admin notify failed: {ne}')
+
     elif event['type'] == 'invoice.payment_succeeded':
         sub_id = event['data']['object'].get('subscription')
         if sub_id:
             query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
                   ('active', sub_id), commit=True)
-    
-    elif event['type'] == 'invoice.payment_failed':
-        sub_id = event['data']['object'].get('subscription')
-        if sub_id:
-            query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
-                  ('expired', sub_id), commit=True)
-            user = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
-            if user:
-                try:
-                    send_admin_notification(user['email'], '⚠️ Payment failed — account expired')
-                    send_email(user['email'], 'FlexLog — payment failed',
-                        'Hi there,\n\nWe were unable to collect your FlexLog subscription payment.\n\n'
-                        'Your account has been paused. To restore access, please update your payment details:\n\n'
-                        'https://flexlog.co.uk/app\n\n'
-                        'If you need help, reply to this email.\n\nThe FlexLog Team\nsupport@flexlog.co.uk')
-                except Exception as e:
-                    print(f'Payment failed email error: {e}')
+            # Admin notification (renewal — skip first invoice to avoid double-notif with checkout.session.completed)
+            billing_reason = event['data']['object'].get('billing_reason', '')
+            if billing_reason == 'subscription_cycle':
+                u = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
+                if u:
+                    try:
+                        send_admin_notification(u['email'], 'Subscription renewal payment')
+                    except Exception as ne:
+                        print(f'Admin notify failed: {ne}')
 
     elif event['type'] == 'customer.subscription.deleted':
         sub_id = event['data']['object'].get('id')
         if sub_id:
             query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
                   ('expired', sub_id), commit=True)
-            user = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
-            if user:
+            u = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
+            if u:
                 try:
-                    send_admin_notification(user['email'], '❌ Subscription cancelled')
-                    send_email(user['email'], 'FlexLog — subscription cancelled',
-                        'Hi there,\n\nYour FlexLog subscription has been cancelled and your access has ended.\n\n'
-                        'If you change your mind, you can resubscribe anytime at https://flexlog.co.uk/app\n\n'
-                        'We would love to know why you cancelled — reply to this email with any feedback.\n\n'
-                        'The FlexLog Team\nsupport@flexlog.co.uk')
-                except Exception as e:
-                    print(f'Cancellation email error: {e}')
-    
+                    send_admin_notification(u['email'], 'Subscription cancelled')
+                except Exception as ne:
+                    print(f'Admin notify failed: {ne}')
+
+    elif event['type'] == 'invoice.payment_failed':
+        sub_id = event['data']['object'].get('subscription')
+        if sub_id:
+            query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
+                  ('expired', sub_id), commit=True)
+            u = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
+            if u:
+                try:
+                    send_admin_notification(u['email'], 'Payment failed — subscription expired')
+                except Exception as ne:
+                    print(f'Admin notify failed: {ne}')
+
     return jsonify({'ok': True})
 
 @app.route('/api/stripe/portal', methods=['POST'])

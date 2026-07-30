@@ -717,7 +717,7 @@ async function doLogin() {
     const r = await api('POST','/api/login',{email,password:pw});
     token=r.token; userEmail=r.email;
     localStorage.setItem('ft_token',token); localStorage.setItem('ft_email',userEmail);
-    showTrialInfo(r);
+    checkSubscription(r);
     await loadAll();
   } catch(e) { err.textContent=e.message; err.style.display='block'; }
 }
@@ -733,7 +733,7 @@ async function doRegister() {
     const r = await api('POST','/api/register',{email,password:pw});
     token=r.token; userEmail=r.email;
     localStorage.setItem('ft_token',token); localStorage.setItem('ft_email',userEmail);
-    showTrialInfo(r);
+    checkSubscription(r);
     await loadAll();
   } catch(e) { err.textContent=e.message; err.style.display='block'; }
 }
