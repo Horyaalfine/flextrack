@@ -229,21 +229,40 @@ def send_subscriber_confirmation(user_email, renewal_date=None):
     renewal_str = renewal_date.strftime('%d %B %Y') if renewal_date else 'next month'
     send_email(
         user_email,
-        'Welcome to FlexLog — subscription confirmed',
+        'Welcome to FlexLog — you\'re now subscribed!',
         f"""Hi,
 
-Your FlexLog subscription is now active. Thank you for subscribing!
+Welcome to FlexLog! Your subscription is now active and your account is fully unlocked.
 
-Your next renewal date is: {renewal_str}
+SUBSCRIPTION DETAILS
+--------------------
+Status:       Active
+Renews:       {renewal_str} (automatically — no action needed)
+Price:        £3/month
 
-You now have full access to:
+WHAT YOU HAVE ACCESS TO
+-----------------------
   - Unlimited slot logging
   - H&R insurance auto-calculated
   - HMRC SA103 annual report
   - Universal Credit monthly report
+  - Actual cash profit report
   - CSV & PDF export
 
-If you have any questions, reply to this email or contact support@flexlog.co.uk
+HOW TO CANCEL
+-------------
+You can cancel anytime — you won't be charged again after cancellation and you keep access until the end of your current billing period.
+
+To cancel: log in to flexlog.co.uk → Settings → Manage Subscription, or reply to this email and we'll cancel it for you.
+
+NEED HELP?
+----------
+If you have any questions or need support, just reply to this email or contact us at:
+support@flexlog.co.uk
+
+We typically respond within 24 hours.
+
+Thank you for supporting FlexLog!
 
 The FlexLog Team
 https://flexlog.co.uk
