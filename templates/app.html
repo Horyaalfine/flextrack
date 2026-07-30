@@ -742,22 +742,25 @@ function checkSubscription(r) {
   const status = r.status || r.subscription_status;
   const daysLeft = r.trial_days_left;
   const pm = document.getElementById('paywall-modal');
-  if (status === 'expired' || (status === 'trial' && daysLeft <= 0)) {
-    // Show full paywall modal
-    window._trialExpired = true;
-    if (pm) pm.style.display = 'block';
-    document.getElementById('screen-app').style.display = 'none';
-    return false;
-  }
-  // Active trial or subscriber
-  window._trialExpired = false;
+  const expired = status === 'expired' || (status === 'trial' && daysLeft <= 0);
+  window._trialExpired = expired;
+  // Always show the app (read-only mode for expired users)
   if (pm) pm.style.display = 'none';
   document.getElementById('screen-app').style.display = '';
-  if (status === 'trial' && daysLeft > 0) {
-    const tb = document.getElementById('trial-bar');
+  const tb = document.getElementById('trial-bar');
+  if (expired) {
+    // Red banner — clicks intercepted separately
     if (tb) {
-      tb.style.background = '';
-      tb.style.color = '';
+      tb.style.background = '#c0392b';
+      tb.style.color = '#fff';
+      tb.innerHTML = '⚠️ Your free trial has ended. <a href="#" onclick="event.preventDefault();document.getElementById('paywall-modal').style.display='block';" style="color:#fff;font-weight:700;text-decoration:underline;">Subscribe to unlock →</a>';
+      tb.style.display = 'block';
+    }
+    return false;
+  }
+  if (tb) { tb.style.background = ''; tb.style.color = ''; }
+  if (status === 'trial' && daysLeft > 0) {
+    if (tb) {
       tb.textContent = '🎉 Free trial — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' remaining';
       tb.style.display = 'block';
     }
@@ -1607,6 +1610,21 @@ function doSignOut() {
     }
   }
 })();
+
+// ── Expired trial click interceptor ──────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  if (!window._trialExpired) return;
+  // Allow interaction inside the paywall modal itself
+  if (e.target.closest && e.target.closest('#paywall-modal')) return;
+  // Intercept any interactive element
+  const hit = e.target.closest('button, a, input, select, textarea, [onclick], [role="button"], .nav-item, .tab, label');
+  if (hit) {
+    e.preventDefault();
+    e.stopPropagation();
+    const pm = document.getElementById('paywall-modal');
+    if (pm) pm.style.display = 'block';
+  }
+}, true);
 </script>
 </body>
 </html>
