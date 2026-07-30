@@ -646,6 +646,17 @@ def stripe_webhook():
         if customer_id:
             query('UPDATE ft_users SET subscription_status=%s, stripe_subscription_id=%s WHERE stripe_customer_id=%s',
                   ('active', subscription_id, customer_id), commit=True)
+            user = query('SELECT email FROM ft_users WHERE stripe_customer_id=%s', (customer_id,), one=True)
+            if user:
+                try:
+                    send_admin_notification(user['email'], '🎉 New subscriber — payment confirmed')
+                    send_email(user['email'], 'Welcome to FlexLog — subscription confirmed',
+                        'Hi there,\n\nYour FlexLog subscription is now active.\n\n'
+                        'You have full access to all features including HMRC reports, Universal Credit monthly figures, and real cash profit tracking.\n\n'
+                        'Log in at https://flexlog.co.uk/app\n\n'
+                        'Thank you for subscribing!\n\nThe FlexLog Team\nsupport@flexlog.co.uk')
+                except Exception as e:
+                    print(f'Webhook email error: {e}')
     
     elif event['type'] == 'invoice.payment_succeeded':
         sub_id = event['data']['object'].get('subscription')
@@ -653,11 +664,39 @@ def stripe_webhook():
             query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
                   ('active', sub_id), commit=True)
     
-    elif event['type'] in ('customer.subscription.deleted', 'invoice.payment_failed'):
-        sub_id = event['data']['object'].get('id') or event['data']['object'].get('subscription')
+    elif event['type'] == 'invoice.payment_failed':
+        sub_id = event['data']['object'].get('subscription')
         if sub_id:
             query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
                   ('expired', sub_id), commit=True)
+            user = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
+            if user:
+                try:
+                    send_admin_notification(user['email'], '⚠️ Payment failed — account expired')
+                    send_email(user['email'], 'FlexLog — payment failed',
+                        'Hi there,\n\nWe were unable to collect your FlexLog subscription payment.\n\n'
+                        'Your account has been paused. To restore access, please update your payment details:\n\n'
+                        'https://flexlog.co.uk/app\n\n'
+                        'If you need help, reply to this email.\n\nThe FlexLog Team\nsupport@flexlog.co.uk')
+                except Exception as e:
+                    print(f'Payment failed email error: {e}')
+
+    elif event['type'] == 'customer.subscription.deleted':
+        sub_id = event['data']['object'].get('id')
+        if sub_id:
+            query('UPDATE ft_users SET subscription_status=%s WHERE stripe_subscription_id=%s',
+                  ('expired', sub_id), commit=True)
+            user = query('SELECT email FROM ft_users WHERE stripe_subscription_id=%s', (sub_id,), one=True)
+            if user:
+                try:
+                    send_admin_notification(user['email'], '❌ Subscription cancelled')
+                    send_email(user['email'], 'FlexLog — subscription cancelled',
+                        'Hi there,\n\nYour FlexLog subscription has been cancelled and your access has ended.\n\n'
+                        'If you change your mind, you can resubscribe anytime at https://flexlog.co.uk/app\n\n'
+                        'We would love to know why you cancelled — reply to this email with any feedback.\n\n'
+                        'The FlexLog Team\nsupport@flexlog.co.uk')
+                except Exception as e:
+                    print(f'Cancellation email error: {e}')
     
     return jsonify({'ok': True})
 
