@@ -1599,7 +1599,8 @@ function doSignOut() {
   if(token){
     try{
       const me=await api('GET','/api/me');
-      showTrialInfo(me);
+      document.getElementById('screen-auth').style.display='none';
+      if (!checkSubscription(me)) return;
       await loadAll();
     }catch(e){
       localStorage.removeItem('ft_token');
@@ -1608,4 +1609,4 @@ function doSignOut() {
 })();
 </script>
 </body>
-</html>${fs.length > 1 ? `` : ''}
+</html>
