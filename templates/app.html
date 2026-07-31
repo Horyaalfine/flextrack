@@ -437,6 +437,11 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="fg-m"><label>New password</label><input type="password" id="chpw-new" placeholder="At least 6 characters"/></div>
   <div class="fg-m"><label>Confirm new password</label><input type="password" id="chpw-new2" placeholder="Repeat new password"/></div>
   <button class="btn btn-primary" onclick="doChangePassword()">Update password</button>
+  <div id="billing-section" style="display:none;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Subscription</h3>
+    <p style="font-size:12px;color:var(--muted2);margin-bottom:10px;">Manage your billing, view invoices or cancel your subscription via the Stripe billing portal.</p>
+    <button class="btn btn-primary" onclick="openBillingPortal()" style="width:100%;font-size:14px;">💳 Manage / Cancel Subscription</button>
+  </div>
   <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--red);">
     <button class="btn btn-primary" onclick="doSignOut()" style="background:var(--red);border-color:var(--red);width:100%;font-size:15px;">🚪 Sign out of FlexLog</button>
   </div>
@@ -744,6 +749,7 @@ function checkSubscription(r) {
   const pm = document.getElementById('paywall-modal');
   const expired = status === 'expired' || (status === 'trial' && daysLeft <= 0);
   window._trialExpired = expired;
+  window._userStatus = status;
   // Always show the app (read-only mode for expired users)
   if (pm) pm.style.display = 'none';
   document.getElementById('screen-app').style.display = '';
@@ -796,6 +802,9 @@ function openSettings() {
   document.getElementById('chpw-new').value = '';
   document.getElementById('chpw-new2').value = '';
   document.getElementById('chpw-err').textContent = '';
+  // Show billing section only for active subscribers
+  const bs = document.getElementById('billing-section');
+  if (bs) bs.style.display = (window._userStatus === 'active') ? 'block' : 'none';
   openModal('settings-modal');
 }
 
